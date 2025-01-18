@@ -6,6 +6,7 @@ use tfhe::{
 };
 
 mod key_expansion;
+mod encryption;
 const SBOX: [u8; 4] = [0,1,2,3];
 
 // const SBOX: [u8; 256] = [
@@ -42,4 +43,68 @@ fn sub_bytes(state: &mut Vec<FheUint8>) {
     }
 }
 
-fn main() {}
+
+
+fn main() {
+    
+    let key: [u8; 3] = [
+        1,2,0
+    ];
+    let mut iv: [u8; 16] = [
+        0xd4, 0xe0, 0xb8, 0x1e,
+        0x27, 0xbf, 0xb4, 0x41,
+        0x11, 0x98, 0x5d, 0x52,
+        0xae, 0xf1, 0xe5, 0x30,
+    ];
+    let expected_state: [u8; 16] = [
+        0xd4, 0xbf, 0x5d, 0x30,
+        0x27, 0x98, 0xe5, 0x1e,
+        0x11, 0xf1, 0xb8, 0x41,
+        0xae, 0xe0, 0xb4, 0x52,
+    ];
+    println!("{:?}", expected_state);
+    let config = ConfigBuilder::default().build();
+    let (cks, sks) = generate_keys(config);
+
+    set_server_key(sks);
+    let mut xs:Vec<FheUint8> = vec![];
+    for i in iv.iter() {
+        // println!("{:?}", i);
+        let x = FheUint8::encrypt(*i, &cks);
+        xs.push(x);
+    }
+    // sub_bytes(&mut xs);
+
+    // shift_rows(&mut xs);
+
+    gal_mul(xs[0].clone(), xs[1].clone());
+    let mut output:Vec<u8> = vec![];
+    for i in xs.iter() {
+        let z:u8=i.decrypt(&cks);
+        output.push(z);
+    }
+
+    println!("{:?}", output);
+//     println!("{:?}", xs.shape());
+// ;
+
+//     for i in xs.into_container() {
+//         let x = i.clone();
+//         let (result, matched): (FheUint8, _) = x.match_value(&match_values)
+//         .unwrap();
+//         let matched = matched.decrypt(&cks);
+//         println!("{:?}", matched);
+
+//     }
+    // let (result, matched): (FheUint8, _) = xss.match_value(&match_values)
+    //     .unwrap(); // All possible output values fit in a u8
+    // let matched = matched.decrypt(&cks);
+    // println!("Matched: {}", matched);
+    // let result:Vec<u8> = xss.decrypt(&cks);
+    // for i in 0..4 {
+    // }
+
+
+    println!("Hello, world!");
+}
+
