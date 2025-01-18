@@ -78,6 +78,36 @@ pub fn gal_mul_org (a: u8, b: u8) -> u8 {
 
     result
 }
+pub fn gal_mul_int(a:FheUint8, b:u8) -> 
+FheUint8 {
+    let mut result: FheUint8 = FheUint8::encrypt_trivial(0u8);// Result of the multiplication
+    let mut a = a; // Copy of the first operand
+    let mut b = b; // Copy of the second operand
+
+    // Irreducible polynomial for GF(2^8)
+    const IRREDUCIBLE_POLY: u8 = 0x1b; // (x^8) + x^4 + x^3 + x + 1
+
+    // Process each bit of the second operand
+    while b != 0 {
+        // If the least significant bit of b is 1, add the current a to the result
+        if (b & 1) != 0 {
+            result ^= a.clone(); // XOR is used instead of addition in GF(2^8)
+        }
+
+        // Shift a to the left, which corresponds to multiplying by x in GF(2^8)
+        let high_bit_set = (a.clone() & 0x80).ne(0); // Check if the high bit (x^7) is set
+        a <<= 1u8; // Multiply a by x
+
+        // If the high bit was set before shifting, reduce a modulo the irreducible polynomial
+        a=(high_bit_set).if_then_else(&(a.clone()^IRREDUCIBLE_POLY), &a);
+
+        // Shift b to the right, moving to the next bit
+        b >>= 1;
+    }
+
+    result
+
+}
 pub fn gal_mul (a: FheUint8, b: FheUint8) -> FheUint8 {
     let mut result: FheUint8 = FheUint8::encrypt_trivial(0u8); // Result of the multiplication
     let mut a = a.clone(); // Copy of the first operand
@@ -98,32 +128,35 @@ pub fn gal_mul (a: FheUint8, b: FheUint8) -> FheUint8 {
 
     result
 }
-fn mix_columns(state: &mut Vec<FheUint8>) {
+
+
+pub fn mix_columns(state: &mut Vec<FheUint8>) {
+
     let temp = state.clone();
 
     // column 0
-    state[0] = gal_mul(temp[0].clone(), FheUint8::encrypt_trivial(2u8)) ^ gal_mul(temp[1].clone(), FheUint8::encrypt_trivial(3u8)) ^ temp[2].clone() ^ temp[3].clone();
-    state[1] = temp[0].clone() ^ gal_mul(temp[1].clone(), FheUint8::encrypt_trivial(2u8)) ^ gal_mul(temp[2].clone(), FheUint8::encrypt_trivial(3u8)) ^ temp[3].clone();
-    state[2] = temp[0].clone() ^ temp[1].clone() ^ gal_mul(temp[2].clone(), FheUint8::encrypt_trivial(2u8)) ^ gal_mul(temp[3].clone(), FheUint8::encrypt_trivial(3u8));
-    state[3] = gal_mul(temp[0].clone(), FheUint8::encrypt_trivial(3u8)) ^ temp[1].clone() ^ temp[2].clone() ^ gal_mul(temp[3].clone(), FheUint8::encrypt_trivial(2u8));
+    state[0] = gal_mul_int(temp[0].clone(), 2u8) ^ gal_mul_int(temp[1].clone(), 3u8) ^ temp[2].clone() ^ temp[3].clone();
+    state[1] = temp[0].clone() ^ gal_mul_int(temp[1].clone(), 2u8) ^ gal_mul_int(temp[2].clone(), 3u8) ^ temp[3].clone();
+    state[2] = temp[0].clone() ^ temp[1].clone() ^ gal_mul_int(temp[2].clone(), 2u8) ^ gal_mul_int(temp[3].clone(), 3u8);
+    state[3] = gal_mul_int(temp[0].clone(), 3u8) ^ temp[1].clone() ^ temp[2].clone() ^ gal_mul_int(temp[3].clone(), 2u8);
 
     // column 1
-    state[4] = gal_mul(temp[4].clone(), FheUint8::encrypt_trivial(2u8)) ^ gal_mul(temp[5].clone(), FheUint8::encrypt_trivial(3u8)) ^ temp[6].clone() ^ temp[7].clone();
-    state[5] = temp[4].clone() ^ gal_mul(temp[5].clone(), FheUint8::encrypt_trivial(2u8)) ^ gal_mul(temp[6].clone(), FheUint8::encrypt_trivial(3u8)) ^ temp[7].clone();
-    state[6] = temp[4].clone() ^ temp[5].clone() ^ gal_mul(temp[6].clone(), FheUint8::encrypt_trivial(2u8)) ^ gal_mul(temp[7].clone(), FheUint8::encrypt_trivial(3u8));
-    state[7] = gal_mul(temp[4].clone(), FheUint8::encrypt_trivial(3u8)) ^ temp[5].clone() ^ temp[6].clone() ^ gal_mul(temp[7].clone(), FheUint8::encrypt_trivial(2u8));
+    state[4] = gal_mul_int(temp[4].clone(), 2u8) ^ gal_mul_int(temp[5].clone(), 3u8) ^ temp[6].clone() ^ temp[7].clone();
+    state[5] = temp[4].clone() ^ gal_mul_int(temp[5].clone(), 2u8) ^ gal_mul_int(temp[6].clone(), 3u8) ^ temp[7].clone();
+    state[6] = temp[4].clone() ^ temp[5].clone() ^ gal_mul_int(temp[6].clone(), 2u8) ^ gal_mul_int(temp[7].clone(), 3u8);
+    state[7] = gal_mul_int(temp[4].clone(), 3u8) ^ temp[5].clone() ^ temp[6].clone() ^ gal_mul_int(temp[7].clone(), 2u8);
 
     // column 2
-    state[8] = gal_mul(temp[8].clone(), FheUint8::encrypt_trivial(2u8)) ^ gal_mul(temp[9].clone(), FheUint8::encrypt_trivial(3u8)) ^ temp[10].clone() ^ temp[11].clone();
-    state[9] = temp[8].clone() ^ gal_mul(temp[9].clone(), FheUint8::encrypt_trivial(2u8)) ^ gal_mul(temp[10].clone(), FheUint8::encrypt_trivial(3u8)) ^ temp[11].clone();
-    state[10] = temp[8].clone() ^ temp[9].clone() ^ gal_mul(temp[10].clone(), FheUint8::encrypt_trivial(2u8)) ^ gal_mul(temp[11].clone(), FheUint8::encrypt_trivial(3u8));
-    state[11] = gal_mul(temp[8].clone(), FheUint8::encrypt_trivial(3u8)) ^ temp[9].clone() ^ temp[10].clone() ^ gal_mul(temp[11].clone(), FheUint8::encrypt_trivial(2u8));
+    state[8] = gal_mul_int(temp[8].clone(), 2u8) ^ gal_mul_int(temp[9].clone(), 3u8) ^ temp[10].clone() ^ temp[11].clone();
+    state[9] = temp[8].clone() ^ gal_mul_int(temp[9].clone(), 2u8) ^ gal_mul_int(temp[10].clone(), 3u8) ^ temp[11].clone();
+    state[10] = temp[8].clone() ^ temp[9].clone() ^ gal_mul_int(temp[10].clone(), 2u8) ^ gal_mul_int(temp[11].clone(), 3u8);
+    state[11] = gal_mul_int(temp[8].clone(), 3u8) ^ temp[9].clone() ^ temp[10].clone() ^ gal_mul_int(temp[11].clone(), 2u8);
 
     // column 3
-    state[12] = gal_mul(temp[12].clone(), FheUint8::encrypt_trivial(2u8)) ^ gal_mul(temp[13].clone(), FheUint8::encrypt_trivial(3u8)) ^ temp[14].clone() ^ temp[15].clone();
-    state[13] = temp[12].clone() ^ gal_mul(temp[13].clone(), FheUint8::encrypt_trivial(2u8)) ^ gal_mul(temp[14].clone(), FheUint8::encrypt_trivial(3u8)) ^ temp[15].clone();
-    state[14] = temp[12].clone() ^ temp[13].clone() ^ gal_mul(temp[14].clone(), FheUint8::encrypt_trivial(2u8)) ^ gal_mul(temp[15].clone(), FheUint8::encrypt_trivial(3u8));
-    state[15] = gal_mul(temp[12].clone(), FheUint8::encrypt_trivial(3u8)) ^ temp[13].clone() ^ temp[14].clone() ^ gal_mul(temp[15].clone(), FheUint8::encrypt_trivial(2u8));
+    state[12] = gal_mul_int(temp[12].clone(), 2u8) ^ gal_mul_int(temp[13].clone(), 3u8) ^ temp[14].clone() ^ temp[15].clone();
+    state[13] = temp[12].clone() ^ gal_mul_int(temp[13].clone(), 2u8) ^ gal_mul_int(temp[14].clone(), 3u8) ^ temp[15].clone();
+    state[14] = temp[12].clone() ^ temp[13].clone() ^ gal_mul_int(temp[14].clone(), 2u8) ^ gal_mul_int(temp[15].clone(), 3u8);
+    state[15] = gal_mul_int(temp[12].clone(), 3u8) ^ temp[13].clone() ^ temp[14].clone() ^ gal_mul_int(temp[15].clone(), 2u8);
 }
 
 fn mix_columns_org(state: &mut [u8; 16]) {

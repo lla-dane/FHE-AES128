@@ -52,16 +52,16 @@ fn main() {
         1,2,0
     ];
     let mut iv: [u8; 16] = [
-        0xd4, 0xe0, 0xb8, 0x1e,
-        0x27, 0xbf, 0xb4, 0x41,
-        0x11, 0x98, 0x5d, 0x52,
-        0xae, 0xf1, 0xe5, 0x30,
+        0x19, 0xa0, 0x9a, 0xe9,
+        0x3d, 0xf4, 0xc6, 0xf8,
+        0xe3, 0xe2, 0x8d, 0x48,
+        0xbe, 0x2b, 0x2a, 0x08,
     ];
     let expected_state: [u8; 16] = [
-        0xd4, 0xbf, 0x5d, 0x30,
-        0x27, 0x98, 0xe5, 0x1e,
-        0x11, 0xf1, 0xb8, 0x41,
-        0xae, 0xe0, 0xb4, 0x52,
+        0xba, 0x1e, 0xb6, 0xd8, 
+        0x43, 0x67, 0x4d, 0x9e, 
+        0x25, 0xf8, 0xd8, 0xc1, 
+        0x38, 0x9e, 0xd9, 0xc8,
     ];
     println!("{:?}", expected_state);
     let config = ConfigBuilder::default().build();
@@ -79,11 +79,23 @@ fn main() {
     // shift_rows(&mut xs);
 
     
-    let output:u8=gal_mul(FheUint8::encrypt_trivial(245u8), FheUint8::encrypt_trivial(245u8)).decrypt(&cks);
+    let output:u8=gal_mul_int(FheUint8::encrypt_trivial(245u8), 245u8).decrypt(&cks);
 
     let output_org:u8=gal_mul_org(245, 245);
     println!("{:?}", output);
     println!("{:?}", output_org);
+
+    mix_columns(&mut xs);
+    println!("{:?}",  gal_mul_org(iv[0], 0x02) ^ gal_mul_org(iv[1], 0x03) ^ iv[2] ^ iv[3]);
+    for i in xs.iter() {
+        let a:u8=i.decrypt(&cks);
+        println!("{:?}", a);
+
+    }
+    // for i in expected_state.iter() {
+    //     println!("{:?}", i);
+    // }
+
 //     println!("{:?}", xs.shape());
 // ;
 
