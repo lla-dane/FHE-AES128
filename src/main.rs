@@ -45,6 +45,7 @@ fn sub_bytes(state: &mut Vec<FheUint8>) {
 
 
 
+use encryption::*;
 fn main() {
     
     let key: [u8; 3] = [
@@ -77,14 +78,12 @@ fn main() {
 
     // shift_rows(&mut xs);
 
-    gal_mul(xs[0].clone(), xs[1].clone());
-    let mut output:Vec<u8> = vec![];
-    for i in xs.iter() {
-        let z:u8=i.decrypt(&cks);
-        output.push(z);
-    }
+    
+    let output:u8=gal_mul(FheUint8::encrypt_trivial(245u8), FheUint8::encrypt_trivial(245u8)).decrypt(&cks);
 
+    let output_org:u8=gal_mul_org(245, 245);
     println!("{:?}", output);
+    println!("{:?}", output_org);
 //     println!("{:?}", xs.shape());
 // ;
 
