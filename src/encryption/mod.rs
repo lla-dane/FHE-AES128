@@ -106,6 +106,7 @@ pub fn gal_mul_int(a: FheUint8, b: u8) -> FheUint8 {
     log!("Gal_mul_int ended\n");
     result
 }
+
 pub fn gal_mul(a: FheUint8, b: FheUint8) -> FheUint8 {
     let mut result: FheUint8 = FheUint8::encrypt_trivial(0u8);
     let mut a = a.clone();
