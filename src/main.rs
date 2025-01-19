@@ -1,13 +1,17 @@
 #![allow(unused)]
-use tfhe::prelude::*;
-use tfhe::{
-    ClearArray, ConfigBuilder, CpuFheUint8Array, FheUint8, MatchValues, generate_keys,
-    set_server_key,
-};
-
-mod key_expansion;
+#[macro_export]
 mod encryption;
-const SBOX: [u8; 4] = [0,1,2,3];
+mod key_expansion;
+pub mod utils;
+
+use chrono::Local;
+use encryption::*;
+use tfhe::prelude::*;
+use tfhe::{generate_keys, set_server_key, ConfigBuilder, FheUint8, MatchValues};
+
+
+
+const SBOX: [u8; 4] = [0, 1, 2, 3];
 
 // const SBOX: [u8; 256] = [
 //     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -33,89 +37,55 @@ fn get_match_values() -> MatchValues<u8> {
 
     MatchValues::new(match_vector).unwrap()
 }
-
-fn sub_bytes(state: &mut Vec<FheUint8>) {
-    let match_vector: Vec<(u8, u8)> = (0u8..=255u8).map(|x| (x, SBOX[x as usize])).collect();
-    let match_values = MatchValues::new(match_vector).unwrap();
-    for i in state.iter_mut() {
-        // println!("{:?}", i);
-        (*i, _) = i.match_value(&match_values).unwrap();
-    }
-}
-
-
-
-use encryption::*;
-fn main() {
     
-    let key: [u8; 3] = [
-        1,2,0
-    ];
+fn main() {
+    log!("AES128 started");
+    let key: [u8; 3] = [1, 2, 0];
     let mut iv: [u8; 16] = [
-        0x19, 0xa0, 0x9a, 0xe9,
-        0x3d, 0xf4, 0xc6, 0xf8,
-        0xe3, 0xe2, 0x8d, 0x48,
-        0xbe, 0x2b, 0x2a, 0x08,
+        0x19, 0xa0, 0x9a, 0xe9, 0x3d, 0xf4, 0xc6, 0xf8, 0xe3, 0xe2, 0x8d, 0x48, 0xbe, 0x2b, 0x2a,
+        0x08,
     ];
     let expected_state: [u8; 16] = [
-        0xba, 0x1e, 0xb6, 0xd8, 
-        0x43, 0x67, 0x4d, 0x9e, 
-        0x25, 0xf8, 0xd8, 0xc1, 
-        0x38, 0x9e, 0xd9, 0xc8,
+        0xba, 0x1e, 0xb6, 0xd8, 0x43, 0x67, 0x4d, 0x9e, 0x25, 0xf8, 0xd8, 0xc1, 0x38, 0x9e, 0xd9,
+        0xc8,
     ];
-    println!("{:?}", expected_state);
+
     let config = ConfigBuilder::default().build();
     let (cks, sks) = generate_keys(config);
 
+    log!("Before server key");
     set_server_key(sks);
-    let mut xs:Vec<FheUint8> = vec![];
+    log!("After server key\n");
+
+    let mut xs: Vec<FheUint8> = vec![];
     for i in iv.iter() {
-        // println!("{:?}", i);
+        log!("{i }");
         let x = FheUint8::encrypt(*i, &cks);
         xs.push(x);
     }
-    // sub_bytes(&mut xs);
+    sub_bytes(&mut xs);
 
-    // shift_rows(&mut xs);
-
-    
-    let output:u8=gal_mul_int(FheUint8::encrypt_trivial(245u8), 245u8).decrypt(&cks);
-
-    let output_org:u8=gal_mul_org(245, 245);
-    println!("{:?}", output);
-    println!("{:?}", output_org);
+    shift_rows(&mut xs);
 
     mix_columns(&mut xs);
-    println!("{:?}",  gal_mul_org(iv[0], 0x02) ^ gal_mul_org(iv[1], 0x03) ^ iv[2] ^ iv[3]);
+
+    // let output: u8 = gal_mul_int(FheUint8::encrypt_trivial(245u8), 245u8).decrypt(&cks);
+
+    // let output_org: u8 = gal_mul_org(245, 245);
+    // log!("{:?}", output);
+    // log!("{:?}", output_org);
+
+    // log!(
+    //     "{:?}",
+    //     gal_mul_org(iv[0], 0x02) ^ gal_mul_org(iv[1], 0x03) ^ iv[2] ^ iv[3]
+    // );
+
+    // TODO! Add round key
+
     for i in xs.iter() {
-        let a:u8=i.decrypt(&cks);
-        println!("{:?}", a);
-
+        let a: u8 = i.decrypt(&cks);
+        log!("{:?}", a);
     }
-    // for i in expected_state.iter() {
-    //     println!("{:?}", i);
-    // }
 
-//     println!("{:?}", xs.shape());
-// ;
-
-//     for i in xs.into_container() {
-//         let x = i.clone();
-//         let (result, matched): (FheUint8, _) = x.match_value(&match_values)
-//         .unwrap();
-//         let matched = matched.decrypt(&cks);
-//         println!("{:?}", matched);
-
-//     }
-    // let (result, matched): (FheUint8, _) = xss.match_value(&match_values)
-    //     .unwrap(); // All possible output values fit in a u8
-    // let matched = matched.decrypt(&cks);
-    // println!("Matched: {}", matched);
-    // let result:Vec<u8> = xss.decrypt(&cks);
-    // for i in 0..4 {
-    // }
-
-
-    println!("Hello, world!");
+    log!("AES encryption completed");
 }
-

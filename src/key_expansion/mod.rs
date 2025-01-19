@@ -1,9 +1,9 @@
-use crate::{SBOX, get_match_values};
+#[macro_use]
+use crate::log;
+use crate::{get_match_values, SBOX};
 use tfhe::{prelude::FheTrivialEncrypt, FheUint, FheUint8, FheUint8Id};
 
-const R_CONSTANTS: [u8; 11] = [
-    0,1,2,3,0,1,2,3,0,1,2
-];
+const R_CONSTANTS: [u8; 11] = [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2];
 
 // Expands the key into multiple round keys.
 // Nk = 4 as key = 128
@@ -67,16 +67,16 @@ fn key_expansion_fhe(key: &[FheUint8; 16], expanded_key: &mut [FheUint8; 176]) {
             expanded_key[i] = expanded_key[i - 16].clone() ^ temp[j].clone();
             i += 1;
         }
-        println!("i:{}",i);
+        log!("i:{}", i);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use tfhe::{
-        ConfigBuilder, generate_keys,
+        generate_keys,
         prelude::{FheDecrypt, FheEncrypt},
-        set_server_key,
+        set_server_key, ConfigBuilder,
     };
 
     use super::*;
@@ -87,15 +87,15 @@ mod tests {
 
         let mut expanded_key = [0u8; 176];
         key_expansion(&key, &mut expanded_key);
-        println!("{:?}", expanded_key);
+        log!("{:?}", expanded_key);
     }
 
     #[test]
     fn test_key_expansion_fhe() {
-        println!("function started");
+        log!("function started");
         let (client_key, server_key) = generate_keys(ConfigBuilder::default().build());
         set_server_key(server_key);
-        println!("serverkey");
+        log!("serverkey");
 
         let key: [u8; 16] = [1, 2, 0, 1, 0, 2, 0, 2, 1, 1, 0, 2, 1, 0, 2, 2];
 
@@ -106,6 +106,6 @@ mod tests {
         key_expansion_fhe(&encrypted_key, &mut expanded_key);
 
         let decrypted: [u8; 176] = expanded_key.map(|x| x.decrypt(&client_key));
-        println!("{:?}", decrypted);
+        log!("{:?}", decrypted);
     }
 }
