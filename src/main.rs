@@ -4,6 +4,8 @@ mod encryption;
 mod key_expansion;
 pub mod utils;
 
+use std::process::Output;
+
 use chrono::Local;
 use encryption::*;
 use tfhe::prelude::*;
@@ -39,7 +41,7 @@ fn get_match_values() -> MatchValues<u8> {
 }
     
 
-fn aes_encrypt_block(input: &Vec<FheUint8>, output: &mut Vec<FheUint8>, key: &[FheUint8;16]) {
+fn aes_encrypt_block(input: &Vec<FheUint8>, output: &mut [FheUint8;16], key: &[FheUint8;16]) {
     let mut state = input.clone();
     let mut expanded_key: [FheUint<FheUint8Id>; 176] =
             std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
@@ -72,13 +74,24 @@ fn aes_encrypt_block(input: &Vec<FheUint8>, output: &mut Vec<FheUint8>, key: &[F
 fn main() {
     log!("AES128 started");
     let mut iv: [u8; 16] = [
-        0x19, 0xa0, 0x9a, 0xe9, 0x3d, 0xf4, 0xc6, 0xf8, 0xe3, 0xe2, 0x8d, 0x48, 0xbe, 0x2b, 0x2a,
-        0x08,
+        0x00, 0x11, 0x22, 0x33,
+        0x44, 0x55, 0x66, 0x77,
+        0x88, 0x99, 0xaa, 0xbb,
+        0xcc, 0xdd, 0xee, 0xff,
     ];
     let key: [u8; 16] = [
-        0xba, 0x1e, 0xb6, 0xd8, 0x43, 0x67, 0x4d, 0x9e, 0x25, 0xf8, 0xd8, 0xc1, 0x38, 0x9e, 0xd9,
-        0xc8,
+        0x00, 0x01, 0x02, 0x03,
+        0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0a, 0x0b,
+        0x0c, 0x0d, 0x0e, 0x0f,
     ];
+    let expected_state: [u8; 16] = [
+        0x69, 0xc4, 0xe0, 0xd8,
+        0x6a, 0x7b, 0x04, 0x30,
+        0xd8, 0xcd, 0xb7, 0x80,
+        0x70, 0xb4, 0xc5, 0x5a,
+    ];
+
 
     let config = ConfigBuilder::default().build();
     let (cks, sks) = generate_keys(config);
@@ -86,7 +99,16 @@ fn main() {
     log!("Before server key");
     set_server_key(sks);
     log!("After server key\n");
-
+    let mut output: [FheUint<FheUint8Id>; 16] =
+            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+    let mut key_fhe: [FheUint<FheUint8Id>; 16] =
+            std::array::from_fn(|index| FheUint8::encrypt(key[index],&cks));
+    let input: Vec<FheUint8> = iv.iter().map(|x| FheUint8::encrypt(*x, &cks)).collect();
+    aes_encrypt_block(&input, &mut output, &key_fhe);
+    for i in 0..16 {
+        let result:u8 = output[i].decrypt(&cks);
+        log!("{:?} and {}", result , expected_state[i]);
+    }
 
     log!("AES encryption completed");
 }
