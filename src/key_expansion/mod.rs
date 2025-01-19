@@ -36,7 +36,7 @@ fn key_expansion(key: &[u8; 16], expanded_key: &mut [u8; 176]) {
     }
 }
 
-fn key_expansion_fhe(key: &[FheUint8; 16], expanded_key: &mut [FheUint8; 176]) {
+pub fn key_expansion_fhe(key: &[FheUint8; 16], expanded_key: &mut [FheUint8; 176]) {
     expanded_key[0..16].clone_from_slice(&key[..]);
     let mut i = 16usize;
     let mut temp: [FheUint<FheUint8Id>; 4] = [
