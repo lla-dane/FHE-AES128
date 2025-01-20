@@ -6,3 +6,11 @@ edition = "2021"
 [dependencies]
 chrono = "0.4.39"
 tfhe = { version = "0.11.0", features = ["boolean", "shortint", "integer"] }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "my_benchmark"
+path = "benches/my_benchmark.rs"
+harness = false
