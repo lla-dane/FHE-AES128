@@ -3,7 +3,7 @@ use crate::log;
 use crate::{get_match_values, SBOX};
 use tfhe::{prelude::FheTrivialEncrypt, FheUint, FheUint8, FheUint8Id};
 
-const R_CONSTANTS: [u8; 11] = [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2];
+const R_CONSTANTS: [u8; 11] =[0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36];
 
 // Expands the key into multiple round keys.
 // Nk = 4 as key = 128
@@ -48,7 +48,7 @@ pub fn key_expansion_fhe(key: &[FheUint8; 16], expanded_key: &mut [FheUint8; 176
 
     let match_values = get_match_values();
 
-    while i < 34 {
+    while i < 176 {
         temp.clone_from_slice(&expanded_key[i - 4..i]);
 
         if i % 16 == 0 {

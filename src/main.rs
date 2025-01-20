@@ -102,8 +102,8 @@ fn main() {
     let mut output: [FheUint<FheUint8Id>; 16] =
             std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
     let mut key_fhe: [FheUint<FheUint8Id>; 16] =
-            std::array::from_fn(|index| FheUint8::encrypt(key[index],&cks));
-    let input: Vec<FheUint8> = iv.iter().map(|x| FheUint8::encrypt(*x, &cks)).collect();
+            std::array::from_fn(|index| FheUint8::encrypt_trivial(key[index]));
+    let input: Vec<FheUint8> = iv.iter().map(|x| FheUint8::encrypt_trivial(*x)).collect();
     aes_encrypt_block(&input, &mut output, &key_fhe);
     for i in 0..16 {
         let result:u8 = output[i].decrypt(&cks);
