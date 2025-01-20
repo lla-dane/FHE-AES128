@@ -48,7 +48,7 @@ pub fn key_expansion_fhe(key: &[FheUint8; 16], expanded_key: &mut [FheUint8; 176
 
     let match_values = get_match_values();
 
-    while i < 20 {
+    while i < 176 {
         temp.clone_from_slice(&expanded_key[i - 4..i]);
 
         if i % 16 == 0 {
