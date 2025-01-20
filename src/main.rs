@@ -7,11 +7,13 @@ pub mod utils;
 use std::process::Output;
 
 use chrono::Local;
+use clap::Parser;
 use encryption::*;
-use tfhe::prelude::*;
-use tfhe::{generate_keys, set_server_key, ConfigBuilder, FheUint8, MatchValues, FheUint8Id, FheUint};
 use key_expansion::*;
-
+use tfhe::prelude::*;
+use tfhe::{
+    generate_keys, set_server_key, ConfigBuilder, FheUint, FheUint8, FheUint8Id, MatchValues,
+};
 
 // const SBOX: [u8; 4] = [0, 1, 2, 3];
 
@@ -39,12 +41,11 @@ fn get_match_values() -> MatchValues<u8> {
 
     MatchValues::new(match_vector).unwrap()
 }
-    
 
-fn aes_encrypt_block(input: &Vec<FheUint8>, output: &mut [FheUint8;16], key: &[FheUint8;16]) {
+fn aes_encrypt_block(input: &Vec<FheUint8>, output: &mut [FheUint8; 16], key: &[FheUint8; 16]) {
     let mut state = input.clone();
     let mut expanded_key: [FheUint<FheUint8Id>; 176] =
-            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+        std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
 
     key_expansion_fhe(key, &mut expanded_key);
 
@@ -56,10 +57,9 @@ fn aes_encrypt_block(input: &Vec<FheUint8>, output: &mut [FheUint8;16], key: &[F
         shift_rows(&mut state);
 
         mix_columns(&mut state);
-        
-    //     // Add round key
-        add_blocks(&mut state, &expanded_key[round * 16..(round + 1) * 16]);
 
+        // Add round key
+        add_blocks(&mut state, &expanded_key[round * 16..(round + 1) * 16]);
     }
 
     sub_bytes(&mut state);
@@ -69,29 +69,53 @@ fn aes_encrypt_block(input: &Vec<FheUint8>, output: &mut [FheUint8;16], key: &[F
     output.clone_from_slice(&state);
 }
 
+fn hex_to_u8_array(hex: &str) -> Result<[u8; 16], &'static str> {
+    if hex.len() != 32 {
+        return Err("Hex string must be 32 characters long for 128 bits");
+    }
 
+    let mut array = [0u8; 16];
+    for (i, chunk) in hex.as_bytes().chunks(2).enumerate() {
+        let hex_str = std::str::from_utf8(chunk).map_err(|_| "Invalid UTF-8 in hex string")?;
+        array[i] = u8::from_str_radix(hex_str, 16).map_err(|_| "Invalid hex character")?;
+    }
+
+    Ok(array)
+}
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(short, long)]
+    iv: String,
+
+    #[arg(short, long)]
+    key: String,
+
+    #[arg(short, long, default_value_t = 1)]
+    number_of_outputs: u32,
+}
 
 fn main() {
+    let hex_str = "000102030405060708090a0b0c0d0e0f";
+    let iv_arr = hex_to_u8_array(&hex_str).unwrap();
+
+    let args = Args::parse();
+    println!("{}, {}, {}", args.iv, args.key, args.number_of_outputs);
+
     log!("AES128 started");
     let mut iv: [u8; 16] = [
-        0x00, 0x11, 0x22, 0x33,
-        0x44, 0x55, 0x66, 0x77,
-        0x88, 0x99, 0xaa, 0xbb,
-        0xcc, 0xdd, 0xee, 0xff,
+        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
+        0xff,
     ];
     let key: [u8; 16] = [
-        0x00, 0x01, 0x02, 0x03,
-        0x04, 0x05, 0x06, 0x07,
-        0x08, 0x09, 0x0a, 0x0b,
-        0x0c, 0x0d, 0x0e, 0x0f,
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+        0x0f,
     ];
     let expected_state: [u8; 16] = [
-        0x69, 0xc4, 0xe0, 0xd8,
-        0x6a, 0x7b, 0x04, 0x30,
-        0xd8, 0xcd, 0xb7, 0x80,
-        0x70, 0xb4, 0xc5, 0x5a,
+        0x69, 0xc4, 0xe0, 0xd8, 0x6a, 0x7b, 0x04, 0x30, 0xd8, 0xcd, 0xb7, 0x80, 0x70, 0xb4, 0xc5,
+        0x5a,
     ];
-
 
     let config = ConfigBuilder::default().build();
     let (cks, sks) = generate_keys(config);
@@ -100,14 +124,14 @@ fn main() {
     set_server_key(sks);
     log!("After server key\n");
     let mut output: [FheUint<FheUint8Id>; 16] =
-            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+        std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
     let mut key_fhe: [FheUint<FheUint8Id>; 16] =
-            std::array::from_fn(|index| FheUint8::encrypt_trivial(key[index]));
+        std::array::from_fn(|index| FheUint8::encrypt_trivial(key[index]));
     let input: Vec<FheUint8> = iv.iter().map(|x| FheUint8::encrypt_trivial(*x)).collect();
     aes_encrypt_block(&input, &mut output, &key_fhe);
     for i in 0..16 {
-        let result:u8 = output[i].decrypt(&cks);
-        log!("{:?} and {}", result , expected_state[i]);
+        let result: u8 = output[i].decrypt(&cks);
+        log!("{:?} and {}", result, expected_state[i]);
     }
 
     log!("AES encryption completed");

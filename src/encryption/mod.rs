@@ -132,24 +132,7 @@ pub fn gal_mul_int(a: FheUint8, b: u8) -> FheUint8 {
     result
 }
 
-// pub fn gal_mul(a: FheUint8, b: FheUint8) -> FheUint8 {
-//     let mut result: FheUint8 = FheUint8::encrypt_trivial(0u8);
-//     let mut a = a.clone();
-//     let mut b = b.clone();
-//     // (x^8) + x^4 + x^3 + x + 1
-//     const IRREDUCIBLE_POLY: u8 = 0x1b;
-//     for _ in 0..8 {
-//         let res = result.clone() ^ a.clone();
-//         result = ((b.clone() & 1).ne(0)).if_then_else(&res, &result);
-//         let high_bit_set = (a.clone() & 0x80).ne(0);
-//         a <<= 1u8;
-//         a = (high_bit_set).if_then_else(&(a.clone() ^ IRREDUCIBLE_POLY), &a);
-//         b >>= 1u8;
-//     }
-//     result
-// }
 
-// This will be used
 pub fn mix_columns(state: &mut Vec<FheUint8>) {
     log!("Mix columns started");
     let temp = state.clone();
@@ -241,30 +224,3 @@ pub fn mix_columns(state: &mut Vec<FheUint8>) {
     log!("Mix columns completed\n");
 }
 
-// fn mix_columns_org(state: &mut [u8; 16]) {
-//     let temp = *state;
-
-//     // column 0
-//     state[0] = gal_mul_org(temp[0], 0x02) ^ gal_mul_org(temp[1], 0x03) ^ temp[2] ^ temp[3];
-//     state[1] = temp[0] ^ gal_mul_org(temp[1], 0x02) ^ gal_mul_org(temp[2], 0x03) ^ temp[3];
-//     state[2] = temp[0] ^ temp[1] ^ gal_mul_org(temp[2], 0x02) ^ gal_mul_org(temp[3], 0x03);
-//     state[3] = gal_mul_org(temp[0], 0x03) ^ temp[1] ^ temp[2] ^ gal_mul_org(temp[3], 0x02);
-
-//     // column 1
-//     state[4] = gal_mul_org(temp[4], 0x02) ^ gal_mul_org(temp[5], 0x03) ^ temp[6] ^ temp[7];
-//     state[5] = temp[4] ^ gal_mul_org(temp[5], 0x02) ^ gal_mul_org(temp[6], 0x03) ^ temp[7];
-//     state[6] = temp[4] ^ temp[5] ^ gal_mul_org(temp[6], 0x02) ^ gal_mul_org(temp[7], 0x03);
-//     state[7] = gal_mul_org(temp[4], 0x03) ^ temp[5] ^ temp[6] ^ gal_mul_org(temp[7], 0x02);
-
-//     // column 2
-//     state[8] = gal_mul_org(temp[8], 0x02) ^ gal_mul_org(temp[9], 0x03) ^ temp[10] ^ temp[11];
-//     state[9] = temp[8] ^ gal_mul_org(temp[9], 0x02) ^ gal_mul_org(temp[10], 0x03) ^ temp[11];
-//     state[10] = temp[8] ^ temp[9] ^ gal_mul_org(temp[10], 0x02) ^ gal_mul_org(temp[11], 0x03);
-//     state[11] = gal_mul_org(temp[8], 0x03) ^ temp[9] ^ temp[10] ^ gal_mul_org(temp[11], 0x02);
-
-//     // column 3
-//     state[12] = gal_mul_org(temp[12], 0x02) ^ gal_mul_org(temp[13], 0x03) ^ temp[14] ^ temp[15];
-//     state[13] = temp[12] ^ gal_mul_org(temp[13], 0x02) ^ gal_mul_org(temp[14], 0x03) ^ temp[15];
-//     state[14] = temp[12] ^ temp[13] ^ gal_mul_org(temp[14], 0x02) ^ gal_mul_org(temp[15], 0x03);
-//     state[15] = gal_mul_org(temp[12], 0x03) ^ temp[13] ^ temp[14] ^ gal_mul_org(temp[15], 0x02);
-// }
