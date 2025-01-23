@@ -5,7 +5,13 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.39"
-tfhe = { version = "0.11.0", features = ["boolean", "shortint", "integer"] }
+tfhe = { version = "0.11.0", features = [
+    "boolean",
+    "shortint",
+    "integer",
+    "noise-asserts",
+    "nightly-avx512",
+] }
 clap = { version = "4.1", features = ["derive"] }
 
 [dev-dependencies]

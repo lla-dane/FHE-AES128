@@ -97,11 +97,11 @@ struct Args {
 }
 
 fn main() {
-    let hex_str = "000102030405060708090a0b0c0d0e0f";
-    let iv_arr = hex_to_u8_array(&hex_str).unwrap();
+    // let hex_str = "000102030405060708090a0b0c0d0e0f";
+    // let iv_arr = hex_to_u8_array(&hex_str).unwrap();
 
-    let args = Args::parse();
-    println!("{}, {}, {}", args.iv, args.key, args.number_of_outputs);
+    // let args = Args::parse();
+    // println!("{}, {}, {}", args.iv, args.key, args.number_of_outputs);
 
     log!("AES128 started");
     let mut iv: [u8; 16] = [
