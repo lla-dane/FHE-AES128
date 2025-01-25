@@ -13,6 +13,7 @@ tfhe = { version = "0.11.0", features = [
     "nightly-avx512",
 ] }
 clap = { version = "4.1", features = ["derive"] }
+rayon = "1.10.0"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

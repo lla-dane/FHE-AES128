@@ -401,6 +401,7 @@ dependencies = [
  "chrono",
  "clap",
  "criterion",
+ "rayon",
  "tfhe",
 ]
 

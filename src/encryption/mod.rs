@@ -1,6 +1,8 @@
 use tfhe::prelude::*;
 use tfhe::{FheUint8, MatchValues};
-
+use rayon::prelude::*;
+use std::time::Duration;
+use std::thread;
 use crate::log;
 
 const SBOX: [u8; 256] = [
@@ -23,9 +25,12 @@ const SBOX: [u8; 256] = [
 ];
 
 pub fn add_blocks(state: &mut Vec<FheUint8>, b: &[FheUint8]) {
-    for i in 0..16 {
-        state[i] ^= b[i].clone();
-    }
+    state
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, state_elem)| {
+            *state_elem ^= b[i].clone();
+        });
 }
 
 pub fn sub_bytes(state: &mut Vec<FheUint8>) {
@@ -33,41 +38,45 @@ pub fn sub_bytes(state: &mut Vec<FheUint8>) {
     let match_vector: Vec<(u8, u8)> = (0u8..=255u8).map(|x| (x, SBOX[x as usize])).collect();
     let match_values = MatchValues::new(match_vector).unwrap();
 
-    for (index, i) in state.iter_mut().enumerate() {
-        log!("{index}");
+    state
+    .par_iter_mut() // Parallel iterator for mutable access to state
+    .enumerate()    // Add index for logging
+    .for_each(|(index, i)| {
+        log!("{index}"); // Log the index for debugging
         (*i, _) = i.match_value(&match_values).unwrap();
-    }
+    });
     log!("Sub bytes completed\n");
 }
-
 pub fn shift_rows(state: &mut Vec<FheUint8>) {
     log!("Shift rows started");
 
-    let mut temp: Vec<FheUint8> = state.clone();
+    let temp: Vec<FheUint8> = state.clone();
 
-    // column 0
-    state[0] = temp[0].clone();
-    state[1] = temp[5].clone();
-    state[2] = temp[10].clone();
-    state[3] = temp[15].clone();
-
-    // column 1
-    state[4] = temp[4].clone();
-    state[5] = temp[9].clone();
-    state[6] = temp[14].clone();
-    state[7] = temp[3].clone();
-
-    // column 2
-    state[8] = temp[8].clone();
-    state[9] = temp[13].clone();
-    state[10] = temp[2].clone();
-    state[11] = temp[7].clone();
-
-    // column 3
-    state[12] = temp[12].clone();
-    state[13] = temp[1].clone();
-    state[14] = temp[6].clone();
-    state[15] = temp[11].clone();
+    // Process each element independently in parallel
+    state
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, elem)| {
+            *elem = match i {
+                0 => temp[0].clone(),
+                1 => temp[5].clone(),
+                2 => temp[10].clone(),
+                3 => temp[15].clone(),
+                4 => temp[4].clone(),
+                5 => temp[9].clone(),
+                6 => temp[14].clone(),
+                7 => temp[3].clone(),
+                8 => temp[8].clone(),
+                9 => temp[13].clone(),
+                10 => temp[2].clone(),
+                11 => temp[7].clone(),
+                12 => temp[12].clone(),
+                13 => temp[1].clone(),
+                14 => temp[6].clone(),
+                15 => temp[11].clone(),
+                _ => unreachable!(),
+            };
+        });
 
     log!("Shift rows completed\n");
 }
@@ -132,95 +141,85 @@ pub fn gal_mul_int(a: FheUint8, b: u8) -> FheUint8 {
     result
 }
 
-
 pub fn mix_columns(state: &mut Vec<FheUint8>) {
     log!("Mix columns started");
     let temp = state.clone();
 
-    // column 0
-    state[0] = gal_mul_int(temp[0].clone(), 2u8)
-        ^ gal_mul_int(temp[1].clone(), 3u8)
-        ^ temp[2].clone()
-        ^ temp[3].clone();
+    state
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, elem)| {
+            *elem = match i {
+                0 => gal_mul_int(temp[0].clone(), 2u8)
+                    ^ gal_mul_int(temp[1].clone(), 3u8)
+                    ^ temp[2].clone()
+                    ^ temp[3].clone(),
+                1 => temp[0].clone()
+                    ^ gal_mul_int(temp[1].clone(), 2u8)
+                    ^ gal_mul_int(temp[2].clone(), 3u8)
+                    ^ temp[3].clone(),
+                2 => temp[0].clone()
+                    ^ temp[1].clone()
+                    ^ gal_mul_int(temp[2].clone(), 2u8)
+                    ^ gal_mul_int(temp[3].clone(), 3u8),
+                3 => gal_mul_int(temp[0].clone(), 3u8)
+                    ^ temp[1].clone()
+                    ^ temp[2].clone()
+                    ^ gal_mul_int(temp[3].clone(), 2u8),
 
-    state[1] = temp[0].clone()
-        ^ gal_mul_int(temp[1].clone(), 2u8)
-        ^ gal_mul_int(temp[2].clone(), 3u8)
-        ^ temp[3].clone();
+                4 => gal_mul_int(temp[4].clone(), 2u8)
+                    ^ gal_mul_int(temp[5].clone(), 3u8)
+                    ^ temp[6].clone()
+                    ^ temp[7].clone(),
+                5 => temp[4].clone()
+                    ^ gal_mul_int(temp[5].clone(), 2u8)
+                    ^ gal_mul_int(temp[6].clone(), 3u8)
+                    ^ temp[7].clone(),
+                6 => temp[4].clone()
+                    ^ temp[5].clone()
+                    ^ gal_mul_int(temp[6].clone(), 2u8)
+                    ^ gal_mul_int(temp[7].clone(), 3u8),
+                7 => gal_mul_int(temp[4].clone(), 3u8)
+                    ^ temp[5].clone()
+                    ^ temp[6].clone()
+                    ^ gal_mul_int(temp[7].clone(), 2u8),
 
-    state[2] = temp[0].clone()
-        ^ temp[1].clone()
-        ^ gal_mul_int(temp[2].clone(), 2u8)
-        ^ gal_mul_int(temp[3].clone(), 3u8);
+                8 => gal_mul_int(temp[8].clone(), 2u8)
+                    ^ gal_mul_int(temp[9].clone(), 3u8)
+                    ^ temp[10].clone()
+                    ^ temp[11].clone(),
+                9 => temp[8].clone()
+                    ^ gal_mul_int(temp[9].clone(), 2u8)
+                    ^ gal_mul_int(temp[10].clone(), 3u8)
+                    ^ temp[11].clone(),
+                10 => temp[8].clone()
+                    ^ temp[9].clone()
+                    ^ gal_mul_int(temp[10].clone(), 2u8)
+                    ^ gal_mul_int(temp[11].clone(), 3u8),
+                11 => gal_mul_int(temp[8].clone(), 3u8)
+                    ^ temp[9].clone()
+                    ^ temp[10].clone()
+                    ^ gal_mul_int(temp[11].clone(), 2u8),
 
-    state[3] = gal_mul_int(temp[0].clone(), 3u8)
-        ^ temp[1].clone()
-        ^ temp[2].clone()
-        ^ gal_mul_int(temp[3].clone(), 2u8);
-
-    // column 1
-    state[4] = gal_mul_int(temp[4].clone(), 2u8)
-        ^ gal_mul_int(temp[5].clone(), 3u8)
-        ^ temp[6].clone()
-        ^ temp[7].clone();
-
-    state[5] = temp[4].clone()
-        ^ gal_mul_int(temp[5].clone(), 2u8)
-        ^ gal_mul_int(temp[6].clone(), 3u8)
-        ^ temp[7].clone();
-
-    state[6] = temp[4].clone()
-        ^ temp[5].clone()
-        ^ gal_mul_int(temp[6].clone(), 2u8)
-        ^ gal_mul_int(temp[7].clone(), 3u8);
-
-    state[7] = gal_mul_int(temp[4].clone(), 3u8)
-        ^ temp[5].clone()
-        ^ temp[6].clone()
-        ^ gal_mul_int(temp[7].clone(), 2u8);
-
-    // column 2
-    state[8] = gal_mul_int(temp[8].clone(), 2u8)
-        ^ gal_mul_int(temp[9].clone(), 3u8)
-        ^ temp[10].clone()
-        ^ temp[11].clone();
-
-    state[9] = temp[8].clone()
-        ^ gal_mul_int(temp[9].clone(), 2u8)
-        ^ gal_mul_int(temp[10].clone(), 3u8)
-        ^ temp[11].clone();
-
-    state[10] = temp[8].clone()
-        ^ temp[9].clone()
-        ^ gal_mul_int(temp[10].clone(), 2u8)
-        ^ gal_mul_int(temp[11].clone(), 3u8);
-
-    state[11] = gal_mul_int(temp[8].clone(), 3u8)
-        ^ temp[9].clone()
-        ^ temp[10].clone()
-        ^ gal_mul_int(temp[11].clone(), 2u8);
-
-    // column 3
-    state[12] = gal_mul_int(temp[12].clone(), 2u8)
-        ^ gal_mul_int(temp[13].clone(), 3u8)
-        ^ temp[14].clone()
-        ^ temp[15].clone();
-
-    state[13] = temp[12].clone()
-        ^ gal_mul_int(temp[13].clone(), 2u8)
-        ^ gal_mul_int(temp[14].clone(), 3u8)
-        ^ temp[15].clone();
-
-    state[14] = temp[12].clone()
-        ^ temp[13].clone()
-        ^ gal_mul_int(temp[14].clone(), 2u8)
-        ^ gal_mul_int(temp[15].clone(), 3u8);
-
-    state[15] = gal_mul_int(temp[12].clone(), 3u8)
-        ^ temp[13].clone()
-        ^ temp[14].clone()
-        ^ gal_mul_int(temp[15].clone(), 2u8);
+                12 => gal_mul_int(temp[12].clone(), 2u8)
+                    ^ gal_mul_int(temp[13].clone(), 3u8)
+                    ^ temp[14].clone()
+                    ^ temp[15].clone(),
+                13 => temp[12].clone()
+                    ^ gal_mul_int(temp[13].clone(), 2u8)
+                    ^ gal_mul_int(temp[14].clone(), 3u8)
+                    ^ temp[15].clone(),
+                14 => temp[12].clone()
+                    ^ temp[13].clone()
+                    ^ gal_mul_int(temp[14].clone(), 2u8)
+                    ^ gal_mul_int(temp[15].clone(), 3u8),
+                15 => gal_mul_int(temp[12].clone(), 3u8)
+                    ^ temp[13].clone()
+                    ^ temp[14].clone()
+                    ^ gal_mul_int(temp[15].clone(), 2u8),
+                _ => unreachable!(),
+            };
+        });
 
     log!("Mix columns completed\n");
 }
-
