@@ -121,6 +121,7 @@ fn main() {
     let (cks, sks) = generate_keys(config);
 
     log!("Before server key");
+    rayon::broadcast(|_| set_server_key(sks.clone()));
     set_server_key(sks);
     log!("After server key\n");
     let mut output: [FheUint<FheUint8Id>; 16] =
