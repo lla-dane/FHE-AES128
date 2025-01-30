@@ -144,7 +144,7 @@ struct Args {
     key: String,
 }
 
-// cargo run -- -n 1 -k 000102030405060708090a0b0c0d0e0f -i 00112233445566778899aabbccddeeff
+// cargo run --release -- -n 1 -k 000102030405060708090a0b0c0d0e0f -i 00112233445566778899aabbccddeeff
 
 fn main() {
     // let iv = hex_to_u8_array("00112233445566778899aabbccddeeff").unwrap();
@@ -154,7 +154,6 @@ fn main() {
     let encryption_start = Instant::now();
 
     let args = Args::parse();
-    println!("{}, {}, {}", args.iv, args.key, args.number_of_outputs);
 
     let iv = hex_to_u8_array(&args.iv).unwrap();
     let key = hex_to_u8_array(&args.key).unwrap();
@@ -206,7 +205,7 @@ fn main() {
 
     for i in 0..16 {
         let result: u8 = output_encryption[i].decrypt(&cks);
-        log!("{:?} and {}", result, expected_state[i]);
+        assert_eq!(result, expected_state[i]);
     }
 
     log!("AES encryption completed");
@@ -232,11 +231,9 @@ mod tests {
     }
 
     #[test]
+    // cargo test --release --package fhe-aes128 --bin fhe-aes128 -- tests::aes_encryption --exact --show-output
     fn aes_encryption() {
         let encryption_start = Instant::now();
-
-        // let iv = hex_to_u8_array("00112233445566778899aabbccddeeff").unwrap();
-        // let key = hex_to_u8_array("000102030405060708090a0b0c0d0e0f").unwrap();
 
         let iv = hex_to_u8_array(&generate_random_hex_string()).unwrap();
         let key = hex_to_u8_array(&generate_random_hex_string()).unwrap();
@@ -245,7 +242,7 @@ mod tests {
         let aes_cipher = Aes128::new((&key).into());
         aes_cipher.encrypt_block((&mut expected_state).into());
 
-        let number_of_outputs = 1;
+        let number_of_outputs = 4;
 
         let mut counters_encryption: Vec<[u8; 16]> = vec![iv];
         for _ in 0..(number_of_outputs - 1) {
@@ -296,11 +293,9 @@ mod tests {
     }
 
     #[test]
+    // cargo test --release --package fhe-aes128 --bin fhe-aes128 -- tests::aes_decryption --exact --show-output
     fn aes_decryption() {
         let decryption_start = Instant::now();
-
-        // let iv = hex_to_u8_array("00112233445566778899aabbccddeeff").unwrap();
-        // let key = hex_to_u8_array("000102030405060708090a0b0c0d0e0f").unwrap();
 
         let iv = hex_to_u8_array(&generate_random_hex_string()).unwrap();
         let key = hex_to_u8_array(&generate_random_hex_string()).unwrap();
@@ -357,5 +352,23 @@ mod tests {
             "AES decryption of {} outputs took {} seconds",
             number_of_outputs, decryption_duration
         );
+    }
+
+    #[test]
+    // cargo test --release --package fhe-aes128 --bin fhe-aes128 -- tests::aes_key_expansion --exact --show-output
+    fn aes_key_expansion() {
+        let config = ConfigBuilder::default().build();
+        let (cks, sks) = generate_keys(config);
+
+        rayon::broadcast(|_| set_server_key(sks.clone()));
+        set_server_key(sks);
+
+        let key = hex_to_u8_array(&generate_random_hex_string()).unwrap();
+        let key_fhe = std::array::from_fn(|index| FheUint8::encrypt_trivial(key[index]));
+
+        let mut expanded_key: [FheUint<FheUint8Id>; 176] =
+            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+
+        key_expansion_fhe(&key_fhe, &mut expanded_key);
     }
 }
