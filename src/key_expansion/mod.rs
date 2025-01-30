@@ -54,39 +54,10 @@ pub fn key_expansion_fhe(key: &[FheUint8; 16], expanded_key: &mut [FheUint8; 176
         }
 
         i += 4; // Increment by 4 as we're processing 4 bytes at a time
-        log!("i: {}", i);
     }
 
     let key_expansion_duration = key_expansion_time.elapsed().as_secs();
     println!("AES key expansion took: {} seconds", key_expansion_duration);
 }
 
-#[cfg(test)]
-mod tests {
-    use tfhe::{
-        generate_keys,
-        prelude::{FheDecrypt, FheEncrypt},
-        set_server_key, ConfigBuilder,
-    };
 
-    use super::*;
-    #[test]
-    #[ignore = "error"]
-    fn key_fhe() {
-        log!("function started");
-        let (client_key, server_key) = generate_keys(ConfigBuilder::default().build());
-        set_server_key(server_key);
-        log!("serverkey");
-
-        let key: [u8; 16] = [1, 2, 0, 1, 0, 2, 0, 2, 1, 1, 0, 2, 1, 0, 2, 2];
-
-        let encrypted_key: [FheUint8; 16] = key.map(|x| FheUint8::encrypt_trivial(x));
-        let mut expanded_key: [FheUint<FheUint8Id>; 176] =
-            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
-
-        key_expansion_fhe(&encrypted_key, &mut expanded_key);
-
-        let decrypted: [u8; 176] = expanded_key.map(|x| x.decrypt(&client_key));
-        log!("{:?}", decrypted);
-    }
-}

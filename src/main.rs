@@ -161,7 +161,6 @@ fn main() {
     let mut expected_state = iv.clone();
     let aes_cipher = Aes128::new((&key).into());
     aes_cipher.encrypt_block((&mut expected_state).into());
-    log!("AES128 started");
 
     let mut counters_encryption: Vec<[u8; 16]> = vec![iv];
 
@@ -181,8 +180,6 @@ fn main() {
 
     let mut output_encryption: [FheUint<FheUint8Id>; 16] =
         std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
-
-    println!("Executing AES-CTR mode");
 
     for i in 0..(args.number_of_outputs) as usize {
         let mut _output_encryption: [FheUint<FheUint8Id>; 16] =
@@ -207,8 +204,6 @@ fn main() {
         let result: u8 = output_encryption[i].decrypt(&cks);
         assert_eq!(result, expected_state[i]);
     }
-
-    log!("AES encryption completed");
 
     println!(
         "AES encryption of {} outputs took {} seconds",

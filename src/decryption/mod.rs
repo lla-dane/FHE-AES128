@@ -25,7 +25,6 @@ const INV_SBOX: [u8; 256] = [
 ];
 
 pub fn inv_sub_bytes(state: &mut Vec<FheUint8>) {
-    log!("Sub bytes started");
     let match_vector: Vec<(u8, u8)> = (0u8..=255u8).map(|x| (x, INV_SBOX[x as usize])).collect();
     let match_values = MatchValues::new(match_vector).unwrap();
 
@@ -33,15 +32,11 @@ pub fn inv_sub_bytes(state: &mut Vec<FheUint8>) {
         .par_iter_mut() // Parallel iterator for mutable access to state
         .enumerate() // Add index for logging
         .for_each(|(index, i)| {
-            log!("{index}"); // Log the index for debugging
             (*i, _) = i.match_value(&match_values).unwrap();
         });
-    log!("Sub bytes completed\n");
 }
 
 pub fn inv_shift_rows(state: &mut Vec<FheUint8>) {
-    log!("Shift rows started");
-
     let temp: Vec<FheUint8> = state.clone();
 
     // Process each element independently in parallel
@@ -66,12 +61,9 @@ pub fn inv_shift_rows(state: &mut Vec<FheUint8>) {
             _ => unreachable!(),
         };
     });
-
-    log!("Shift rows completed\n");
 }
 
 pub fn gal_mul_int(a: FheUint8, b: u8) -> FheUint8 {
-    log!("Gal_mul_int started");
     let mut result: FheUint8 = FheUint8::encrypt_trivial(0u8); // Result of the multiplication
     let mut a = a;
     let mut b = b;
@@ -96,12 +88,10 @@ pub fn gal_mul_int(a: FheUint8, b: u8) -> FheUint8 {
         // Shift b to the right, moving to the next bit
         b >>= 1;
     }
-    log!("Gal_mul_int ended\n");
     result
 }
 
 pub fn inv_mix_columns(state: &mut Vec<FheUint8>) {
-    log!("Inverse mix columns started");
     let temp = state.clone();
 
     state.par_iter_mut().enumerate().for_each(|(i, elem)| {
@@ -208,6 +198,4 @@ pub fn inv_mix_columns(state: &mut Vec<FheUint8>) {
             _ => unreachable!(),
         };
     });
-
-    log!("Inverse mix columns completed\n");
 }
