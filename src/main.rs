@@ -1,10 +1,11 @@
-// #![allow(unused)]
+#![allow(unused)]
 mod decryption;
 // #[macro_export]
 mod encryption;
 mod key_expansion;
 pub mod utils;
 
+// use rand::Rng;
 use std::time::Instant;
 
 use aes::cipher::{BlockEncrypt, KeyInit};
@@ -17,8 +18,6 @@ use tfhe::prelude::*;
 use tfhe::{
     generate_keys, set_server_key, ConfigBuilder, FheUint, FheUint8, FheUint8Id, MatchValues,
 };
-
-// const SBOX: [u8; 4] = [0, 1, 2, 3];
 
 const SBOX: [u8; 256] = [
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -145,6 +144,8 @@ struct Args {
     key: String,
 }
 
+// cargo run -- -n 1 -k 000102030405060708090a0b0c0d0e0f -i 00112233445566778899aabbccddeeff
+
 fn main() {
     // let iv = hex_to_u8_array("00112233445566778899aabbccddeeff").unwrap();
     // let expected_state = hex_to_u8_array("69c4e0d86a7b0430d8cdb78070b4c55a").unwrap();
@@ -161,7 +162,6 @@ fn main() {
     let mut expected_state = iv.clone();
     let aes_cipher = Aes128::new((&key).into());
     aes_cipher.encrypt_block((&mut expected_state).into());
-
     log!("AES128 started");
 
     let mut counters_encryption: Vec<[u8; 16]> = vec![iv];
@@ -219,16 +219,27 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use rand::Rng;
     use std::{fs::File, io::Write, time::Instant};
 
     use super::*;
+
+    fn generate_random_hex_string() -> String {
+        let mut rng = rand::thread_rng();
+        (0..16)
+            .map(|_| format!("{:02x}", rng.gen::<u8>()))
+            .collect()
+    }
 
     #[test]
     fn aes_encryption() {
         let encryption_start = Instant::now();
 
-        let iv = hex_to_u8_array("00112233445566778899aabbccddeeff").unwrap();
-        let key = hex_to_u8_array("000102030405060708090a0b0c0d0e0f").unwrap();
+        // let iv = hex_to_u8_array("00112233445566778899aabbccddeeff").unwrap();
+        // let key = hex_to_u8_array("000102030405060708090a0b0c0d0e0f").unwrap();
+
+        let iv = hex_to_u8_array(&generate_random_hex_string()).unwrap();
+        let key = hex_to_u8_array(&generate_random_hex_string()).unwrap();
 
         let mut expected_state = iv.clone();
         let aes_cipher = Aes128::new((&key).into());
@@ -282,24 +293,23 @@ mod tests {
             "AES encryption of {} outputs took {} seconds",
             number_of_outputs, encryption_duration
         );
-
-        // Write the output_encryption to an output.txt file
-
-        let mut file = File::create("output.txt").expect("Unable to create file");
-        for i in 0..16 {
-            let result: u8 = output_encryption[i].decrypt(&cks);
-            writeln!(file, "{:02x}", result).expect("Unable to write data");
-        }
     }
 
     #[test]
     fn aes_decryption() {
         let decryption_start = Instant::now();
 
-        let iv = hex_to_u8_array("00112233445566778899aabbccddeeff").unwrap();
-        let expected_state = hex_to_u8_array("69c4e0d86a7b0430d8cdb78070b4c55a").unwrap();
-        let key = hex_to_u8_array("000102030405060708090a0b0c0d0e0f").unwrap();
-        let number_of_outputs = 3;
+        // let iv = hex_to_u8_array("00112233445566778899aabbccddeeff").unwrap();
+        // let key = hex_to_u8_array("000102030405060708090a0b0c0d0e0f").unwrap();
+
+        let iv = hex_to_u8_array(&generate_random_hex_string()).unwrap();
+        let key = hex_to_u8_array(&generate_random_hex_string()).unwrap();
+
+        let mut expected_state = iv.clone();
+        let aes_cipher = Aes128::new((&key).into());
+        aes_cipher.encrypt_block((&mut expected_state).into());
+
+        let number_of_outputs = 1;
 
         let mut counters_decryption: Vec<[u8; 16]> = vec![expected_state];
         for _ in 0..(number_of_outputs - 1) {
@@ -340,7 +350,7 @@ mod tests {
 
         for i in 0..16 {
             let result: u8 = output_decryption[i].decrypt(&cks);
-            log!("{:?} and {}", result, iv[i]);
+            assert_eq!(result, iv[i]);
         }
 
         println!(
