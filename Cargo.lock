@@ -398,6 +398,7 @@ dependencies = [
 name = "fhe-aes128"
 version = "0.1.0"
 dependencies = [
+ "aes",
  "chrono",
  "clap",
  "criterion",

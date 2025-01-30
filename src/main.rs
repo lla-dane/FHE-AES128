@@ -1,13 +1,16 @@
-#![allow(unused)]
-#[macro_export]
+// #![allow(unused)]
+mod decryption;
+// #[macro_export]
 mod encryption;
 mod key_expansion;
 pub mod utils;
 
-use std::process::Output;
+use std::time::Instant;
 
-use chrono::Local;
+use aes::cipher::{BlockEncrypt, KeyInit};
+use aes::Aes128;
 use clap::Parser;
+use decryption::{inv_mix_columns, inv_shift_rows, inv_sub_bytes};
 use encryption::*;
 use key_expansion::*;
 use tfhe::prelude::*;
@@ -69,6 +72,52 @@ fn aes_encrypt_block(input: &Vec<FheUint8>, output: &mut [FheUint8; 16], key: &[
     output.clone_from_slice(&state);
 }
 
+fn increment_counter(iv: &[u8; 16]) -> [u8; 16] {
+    let mut counter = iv.clone();
+
+    let len = counter.len();
+    for i in (0..len).rev() {
+        if counter[i] == 0xFF {
+            // If the byte is 0xFF, set it to 0x00 and carry over to the next byte
+            counter[i] = 0x00;
+        } else {
+            // Increment the byte and stop
+            counter[i] += 1;
+            break;
+        }
+    }
+
+    return counter;
+}
+
+fn aes_decrypt_block(input: &Vec<FheUint8>, output: &mut [FheUint8; 16], key: &[FheUint8; 16]) {
+    let mut state = input.clone();
+    let mut expanded_key: [FheUint<FheUint8Id>; 176] =
+        std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+
+    key_expansion_fhe(key, &mut expanded_key);
+
+    add_blocks(&mut state, &expanded_key[160..176]);
+
+    for round in (1..10).rev() {
+        inv_shift_rows(&mut state);
+
+        inv_sub_bytes(&mut state);
+
+        add_blocks(&mut state, &expanded_key[round * 16..(round + 1) * 16]);
+
+        inv_mix_columns(&mut state);
+
+        // Add round key
+    }
+
+    inv_shift_rows(&mut state);
+    inv_sub_bytes(&mut state);
+    add_blocks(&mut state, &expanded_key[0..16]);
+
+    output.clone_from_slice(&state);
+}
+
 fn hex_to_u8_array(hex: &str) -> Result<[u8; 16], &'static str> {
     if hex.len() != 32 {
         return Err("Hex string must be 32 characters long for 128 bits");
@@ -86,54 +135,217 @@ fn hex_to_u8_array(hex: &str) -> Result<[u8; 16], &'static str> {
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
+    #[arg(short, long, default_value_t = 1)]
+    number_of_outputs: u32,
+
     #[arg(short, long)]
     iv: String,
 
     #[arg(short, long)]
     key: String,
-
-    #[arg(short, long, default_value_t = 1)]
-    number_of_outputs: u32,
 }
 
 fn main() {
-    // let hex_str = "000102030405060708090a0b0c0d0e0f";
-    // let iv_arr = hex_to_u8_array(&hex_str).unwrap();
+    // let iv = hex_to_u8_array("00112233445566778899aabbccddeeff").unwrap();
+    // let expected_state = hex_to_u8_array("69c4e0d86a7b0430d8cdb78070b4c55a").unwrap();
+    // let key = hex_to_u8_array("000102030405060708090a0b0c0d0e0f").unwrap();
 
-    // let args = Args::parse();
-    // println!("{}, {}, {}", args.iv, args.key, args.number_of_outputs);
+    let encryption_start = Instant::now();
+
+    let args = Args::parse();
+    println!("{}, {}, {}", args.iv, args.key, args.number_of_outputs);
+
+    let iv = hex_to_u8_array(&args.iv).unwrap();
+    let key = hex_to_u8_array(&args.key).unwrap();
+
+    let mut expected_state = iv.clone();
+    let aes_cipher = Aes128::new((&key).into());
+    aes_cipher.encrypt_block((&mut expected_state).into());
 
     log!("AES128 started");
-    let mut iv: [u8; 16] = [
-        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
-        0xff,
-    ];
-    let key: [u8; 16] = [
-        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
-        0x0f,
-    ];
-    let expected_state: [u8; 16] = [
-        0x69, 0xc4, 0xe0, 0xd8, 0x6a, 0x7b, 0x04, 0x30, 0xd8, 0xcd, 0xb7, 0x80, 0x70, 0xb4, 0xc5,
-        0x5a,
-    ];
+
+    let mut counters_encryption: Vec<[u8; 16]> = vec![iv];
+
+    for _ in 0..(args.number_of_outputs - 1) {
+        let incremented_iv = increment_counter(&iv);
+        counters_encryption.push(incremented_iv);
+    }
 
     let config = ConfigBuilder::default().build();
     let (cks, sks) = generate_keys(config);
 
-    log!("Before server key");
     rayon::broadcast(|_| set_server_key(sks.clone()));
     set_server_key(sks);
-    log!("After server key\n");
-    let mut output: [FheUint<FheUint8Id>; 16] =
-        std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
-    let mut key_fhe: [FheUint<FheUint8Id>; 16] =
+
+    let key_fhe: [FheUint<FheUint8Id>; 16] =
         std::array::from_fn(|index| FheUint8::encrypt_trivial(key[index]));
-    let input: Vec<FheUint8> = iv.iter().map(|x| FheUint8::encrypt_trivial(*x)).collect();
-    aes_encrypt_block(&input, &mut output, &key_fhe);
+
+    let mut output_encryption: [FheUint<FheUint8Id>; 16] =
+        std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+
+    println!("Executing AES-CTR mode");
+
+    for i in 0..(args.number_of_outputs) as usize {
+        let mut _output_encryption: [FheUint<FheUint8Id>; 16] =
+            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+
+        let input: Vec<FheUint8> = counters_encryption[i]
+            .iter()
+            .map(|x| FheUint8::encrypt_trivial(*x))
+            .collect();
+
+        if i == 0 {
+            aes_encrypt_block(&input, &mut output_encryption, &key_fhe);
+            continue;
+        }
+
+        aes_encrypt_block(&input, &mut _output_encryption, &key_fhe);
+    }
+
+    let encryption_duration = encryption_start.elapsed().as_secs();
+
     for i in 0..16 {
-        let result: u8 = output[i].decrypt(&cks);
+        let result: u8 = output_encryption[i].decrypt(&cks);
         log!("{:?} and {}", result, expected_state[i]);
     }
 
     log!("AES encryption completed");
+
+    println!(
+        "AES encryption of {} outputs took {} seconds",
+        args.number_of_outputs, encryption_duration
+    );
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{fs::File, io::Write, time::Instant};
+
+    use super::*;
+
+    #[test]
+    fn aes_encryption() {
+        let encryption_start = Instant::now();
+
+        let iv = hex_to_u8_array("00112233445566778899aabbccddeeff").unwrap();
+        let key = hex_to_u8_array("000102030405060708090a0b0c0d0e0f").unwrap();
+
+        let mut expected_state = iv.clone();
+        let aes_cipher = Aes128::new((&key).into());
+        aes_cipher.encrypt_block((&mut expected_state).into());
+
+        let number_of_outputs = 1;
+
+        let mut counters_encryption: Vec<[u8; 16]> = vec![iv];
+        for _ in 0..(number_of_outputs - 1) {
+            let incremented_iv = increment_counter(&iv);
+            counters_encryption.push(incremented_iv);
+        }
+
+        let config = ConfigBuilder::default().build();
+        let (cks, sks) = generate_keys(config);
+
+        rayon::broadcast(|_| set_server_key(sks.clone()));
+        set_server_key(sks);
+
+        let key_fhe: [FheUint<FheUint8Id>; 16] =
+            std::array::from_fn(|index| FheUint8::encrypt_trivial(key[index]));
+
+        let mut output_encryption: [FheUint<FheUint8Id>; 16] =
+            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+
+        for i in 0..number_of_outputs {
+            let mut _output_encryption: [FheUint<FheUint8Id>; 16] =
+                std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+
+            let input: Vec<FheUint8> = counters_encryption[i]
+                .iter()
+                .map(|x| FheUint8::encrypt_trivial(*x))
+                .collect();
+
+            if i == 0 {
+                aes_encrypt_block(&input, &mut output_encryption, &key_fhe);
+                continue;
+            }
+
+            aes_encrypt_block(&input, &mut _output_encryption, &key_fhe);
+        }
+
+        let encryption_duration = encryption_start.elapsed().as_secs();
+
+        for i in 0..16 {
+            let result: u8 = output_encryption[i].decrypt(&cks);
+            assert_eq!(result, expected_state[i]);
+        }
+
+        println!(
+            "AES encryption of {} outputs took {} seconds",
+            number_of_outputs, encryption_duration
+        );
+
+        // Write the output_encryption to an output.txt file
+
+        let mut file = File::create("output.txt").expect("Unable to create file");
+        for i in 0..16 {
+            let result: u8 = output_encryption[i].decrypt(&cks);
+            writeln!(file, "{:02x}", result).expect("Unable to write data");
+        }
+    }
+
+    #[test]
+    fn aes_decryption() {
+        let decryption_start = Instant::now();
+
+        let iv = hex_to_u8_array("00112233445566778899aabbccddeeff").unwrap();
+        let expected_state = hex_to_u8_array("69c4e0d86a7b0430d8cdb78070b4c55a").unwrap();
+        let key = hex_to_u8_array("000102030405060708090a0b0c0d0e0f").unwrap();
+        let number_of_outputs = 3;
+
+        let mut counters_decryption: Vec<[u8; 16]> = vec![expected_state];
+        for _ in 0..(number_of_outputs - 1) {
+            let incremented_exepcted_state = increment_counter(&expected_state);
+            counters_decryption.push(incremented_exepcted_state);
+        }
+
+        let config = ConfigBuilder::default().build();
+        let (cks, sks) = generate_keys(config);
+
+        rayon::broadcast(|_| set_server_key(sks.clone()));
+        set_server_key(sks);
+
+        let key_fhe: [FheUint<FheUint8Id>; 16] =
+            std::array::from_fn(|index| FheUint8::encrypt_trivial(key[index]));
+
+        let mut output_decryption: [FheUint<FheUint8Id>; 16] =
+            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+
+        for i in 0..number_of_outputs {
+            let mut _output_decryption: [FheUint<FheUint8Id>; 16] =
+                std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+
+            let input: Vec<FheUint8> = counters_decryption[i]
+                .iter()
+                .map(|x| FheUint8::encrypt_trivial(*x))
+                .collect();
+
+            if i == 0 {
+                aes_decrypt_block(&input, &mut output_decryption, &key_fhe);
+                continue;
+            }
+
+            aes_decrypt_block(&input, &mut _output_decryption, &key_fhe);
+        }
+
+        let decryption_duration = decryption_start.elapsed().as_secs();
+
+        for i in 0..16 {
+            let result: u8 = output_decryption[i].decrypt(&cks);
+            log!("{:?} and {}", result, iv[i]);
+        }
+
+        println!(
+            "AES decryption of {} outputs took {} seconds",
+            number_of_outputs, decryption_duration
+        );
+    }
 }

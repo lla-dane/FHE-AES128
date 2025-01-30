@@ -1,9 +1,9 @@
+use crate::log;
+use rayon::prelude::*;
+use std::thread;
+use std::time::Duration;
 use tfhe::prelude::*;
 use tfhe::{FheUint8, MatchValues};
-use rayon::prelude::*;
-use std::time::Duration;
-use std::thread;
-use crate::log;
 
 const SBOX: [u8; 256] = [
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -39,12 +39,12 @@ pub fn sub_bytes(state: &mut Vec<FheUint8>) {
     let match_values = MatchValues::new(match_vector).unwrap();
 
     state
-    .par_iter_mut() // Parallel iterator for mutable access to state
-    .enumerate()    // Add index for logging
-    .for_each(|(index, i)| {
-        log!("{index}"); // Log the index for debugging
-        (*i, _) = i.match_value(&match_values).unwrap();
-    });
+        .par_iter_mut() // Parallel iterator for mutable access to state
+        .enumerate() // Add index for logging
+        .for_each(|(index, i)| {
+            log!("{index}"); // Log the index for debugging
+            (*i, _) = i.match_value(&match_values).unwrap();
+        });
     log!("Sub bytes completed\n");
 }
 pub fn shift_rows(state: &mut Vec<FheUint8>) {
@@ -53,63 +53,30 @@ pub fn shift_rows(state: &mut Vec<FheUint8>) {
     let temp: Vec<FheUint8> = state.clone();
 
     // Process each element independently in parallel
-    state
-        .par_iter_mut()
-        .enumerate()
-        .for_each(|(i, elem)| {
-            *elem = match i {
-                0 => temp[0].clone(),
-                1 => temp[5].clone(),
-                2 => temp[10].clone(),
-                3 => temp[15].clone(),
-                4 => temp[4].clone(),
-                5 => temp[9].clone(),
-                6 => temp[14].clone(),
-                7 => temp[3].clone(),
-                8 => temp[8].clone(),
-                9 => temp[13].clone(),
-                10 => temp[2].clone(),
-                11 => temp[7].clone(),
-                12 => temp[12].clone(),
-                13 => temp[1].clone(),
-                14 => temp[6].clone(),
-                15 => temp[11].clone(),
-                _ => unreachable!(),
-            };
-        });
+    state.par_iter_mut().enumerate().for_each(|(i, elem)| {
+        *elem = match i {
+            0 => temp[0].clone(),
+            1 => temp[5].clone(),
+            2 => temp[10].clone(),
+            3 => temp[15].clone(),
+            4 => temp[4].clone(),
+            5 => temp[9].clone(),
+            6 => temp[14].clone(),
+            7 => temp[3].clone(),
+            8 => temp[8].clone(),
+            9 => temp[13].clone(),
+            10 => temp[2].clone(),
+            11 => temp[7].clone(),
+            12 => temp[12].clone(),
+            13 => temp[1].clone(),
+            14 => temp[6].clone(),
+            15 => temp[11].clone(),
+            _ => unreachable!(),
+        };
+    });
 
     log!("Shift rows completed\n");
 }
-
-// pub fn gal_mul_org(a: u8, b: u8) -> u8 {
-//     let mut result: u8 = 0;
-//     let mut a = a;
-//     let mut b = b;
-
-//     const IRREDUCIBLE_POLY: u8 = 0x1b; // (x^8) + x^4 + x^3 + x + 1
-
-//     // Process each bit of the second operand
-//     while b != 0 {
-//         if (b & 1) != 0 {
-//             result ^= a;
-//         }
-
-//         // Shift a to the left, which corresponds to multiplying by x in GF(2^8)
-//         let high_bit_set = (a & 0x80) != 0;
-//         a <<= 1; // Multiply a by x
-
-//         // If the high bit was set before shifting, reduce a modulo the irreducible polynomial
-//         if high_bit_set {
-//             a ^= IRREDUCIBLE_POLY;
-//         }
-
-//         // Shift b to the right, moving to the next bit
-//         b >>= 1;
-//     }
-
-//     result
-// }
-
 
 pub fn gal_mul_int(a: FheUint8, b: u8) -> FheUint8 {
     log!("Gal_mul_int started");
@@ -145,81 +112,110 @@ pub fn mix_columns(state: &mut Vec<FheUint8>) {
     log!("Mix columns started");
     let temp = state.clone();
 
-    state
-        .par_iter_mut()
-        .enumerate()
-        .for_each(|(i, elem)| {
-            *elem = match i {
-                0 => gal_mul_int(temp[0].clone(), 2u8)
+    state.par_iter_mut().enumerate().for_each(|(i, elem)| {
+        *elem = match i {
+            0 => {
+                gal_mul_int(temp[0].clone(), 2u8)
                     ^ gal_mul_int(temp[1].clone(), 3u8)
                     ^ temp[2].clone()
-                    ^ temp[3].clone(),
-                1 => temp[0].clone()
+                    ^ temp[3].clone()
+            }
+            1 => {
+                temp[0].clone()
                     ^ gal_mul_int(temp[1].clone(), 2u8)
                     ^ gal_mul_int(temp[2].clone(), 3u8)
-                    ^ temp[3].clone(),
-                2 => temp[0].clone()
+                    ^ temp[3].clone()
+            }
+            2 => {
+                temp[0].clone()
                     ^ temp[1].clone()
                     ^ gal_mul_int(temp[2].clone(), 2u8)
-                    ^ gal_mul_int(temp[3].clone(), 3u8),
-                3 => gal_mul_int(temp[0].clone(), 3u8)
+                    ^ gal_mul_int(temp[3].clone(), 3u8)
+            }
+            3 => {
+                gal_mul_int(temp[0].clone(), 3u8)
                     ^ temp[1].clone()
                     ^ temp[2].clone()
-                    ^ gal_mul_int(temp[3].clone(), 2u8),
+                    ^ gal_mul_int(temp[3].clone(), 2u8)
+            }
 
-                4 => gal_mul_int(temp[4].clone(), 2u8)
+            4 => {
+                gal_mul_int(temp[4].clone(), 2u8)
                     ^ gal_mul_int(temp[5].clone(), 3u8)
                     ^ temp[6].clone()
-                    ^ temp[7].clone(),
-                5 => temp[4].clone()
+                    ^ temp[7].clone()
+            }
+            5 => {
+                temp[4].clone()
                     ^ gal_mul_int(temp[5].clone(), 2u8)
                     ^ gal_mul_int(temp[6].clone(), 3u8)
-                    ^ temp[7].clone(),
-                6 => temp[4].clone()
+                    ^ temp[7].clone()
+            }
+            6 => {
+                temp[4].clone()
                     ^ temp[5].clone()
                     ^ gal_mul_int(temp[6].clone(), 2u8)
-                    ^ gal_mul_int(temp[7].clone(), 3u8),
-                7 => gal_mul_int(temp[4].clone(), 3u8)
+                    ^ gal_mul_int(temp[7].clone(), 3u8)
+            }
+            7 => {
+                gal_mul_int(temp[4].clone(), 3u8)
                     ^ temp[5].clone()
                     ^ temp[6].clone()
-                    ^ gal_mul_int(temp[7].clone(), 2u8),
+                    ^ gal_mul_int(temp[7].clone(), 2u8)
+            }
 
-                8 => gal_mul_int(temp[8].clone(), 2u8)
+            8 => {
+                gal_mul_int(temp[8].clone(), 2u8)
                     ^ gal_mul_int(temp[9].clone(), 3u8)
                     ^ temp[10].clone()
-                    ^ temp[11].clone(),
-                9 => temp[8].clone()
+                    ^ temp[11].clone()
+            }
+            9 => {
+                temp[8].clone()
                     ^ gal_mul_int(temp[9].clone(), 2u8)
                     ^ gal_mul_int(temp[10].clone(), 3u8)
-                    ^ temp[11].clone(),
-                10 => temp[8].clone()
+                    ^ temp[11].clone()
+            }
+            10 => {
+                temp[8].clone()
                     ^ temp[9].clone()
                     ^ gal_mul_int(temp[10].clone(), 2u8)
-                    ^ gal_mul_int(temp[11].clone(), 3u8),
-                11 => gal_mul_int(temp[8].clone(), 3u8)
+                    ^ gal_mul_int(temp[11].clone(), 3u8)
+            }
+            11 => {
+                gal_mul_int(temp[8].clone(), 3u8)
                     ^ temp[9].clone()
                     ^ temp[10].clone()
-                    ^ gal_mul_int(temp[11].clone(), 2u8),
+                    ^ gal_mul_int(temp[11].clone(), 2u8)
+            }
 
-                12 => gal_mul_int(temp[12].clone(), 2u8)
+            12 => {
+                gal_mul_int(temp[12].clone(), 2u8)
                     ^ gal_mul_int(temp[13].clone(), 3u8)
                     ^ temp[14].clone()
-                    ^ temp[15].clone(),
-                13 => temp[12].clone()
+                    ^ temp[15].clone()
+            }
+            13 => {
+                temp[12].clone()
                     ^ gal_mul_int(temp[13].clone(), 2u8)
                     ^ gal_mul_int(temp[14].clone(), 3u8)
-                    ^ temp[15].clone(),
-                14 => temp[12].clone()
+                    ^ temp[15].clone()
+            }
+            14 => {
+                temp[12].clone()
                     ^ temp[13].clone()
                     ^ gal_mul_int(temp[14].clone(), 2u8)
-                    ^ gal_mul_int(temp[15].clone(), 3u8),
-                15 => gal_mul_int(temp[12].clone(), 3u8)
+                    ^ gal_mul_int(temp[15].clone(), 3u8)
+            }
+            15 => {
+                gal_mul_int(temp[12].clone(), 3u8)
                     ^ temp[13].clone()
                     ^ temp[14].clone()
-                    ^ gal_mul_int(temp[15].clone(), 2u8),
-                _ => unreachable!(),
-            };
-        });
+                    ^ gal_mul_int(temp[15].clone(), 2u8)
+            }
+            _ => unreachable!(),
+        };
+    });
 
     log!("Mix columns completed\n");
 }
