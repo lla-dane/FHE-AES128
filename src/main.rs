@@ -44,12 +44,12 @@ fn get_match_values() -> MatchValues<u8> {
     MatchValues::new(match_vector).unwrap()
 }
 
-fn aes_encrypt_block(input: &Vec<FheUint8>, output: &mut [FheUint8; 16], key: &[FheUint8; 16]) {
+fn aes_encrypt_block(
+    input: &Vec<FheUint8>,
+    output: &mut [FheUint8; 16],
+    expanded_key: &[FheUint<FheUint8Id>; 176],
+) {
     let mut state = input.clone();
-    let mut expanded_key: [FheUint<FheUint8Id>; 176] =
-        std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
-
-    key_expansion_fhe(key, &mut expanded_key);
 
     add_blocks(&mut state, &expanded_key[0..16]);
 
@@ -89,12 +89,12 @@ fn increment_counter(iv: &[u8; 16]) -> [u8; 16] {
     return counter;
 }
 
-fn aes_decrypt_block(input: &Vec<FheUint8>, output: &mut [FheUint8; 16], key: &[FheUint8; 16]) {
+fn aes_decrypt_block(
+    input: &Vec<FheUint8>,
+    output: &mut [FheUint8; 16],
+    expanded_key: &[FheUint<FheUint8Id>; 176],
+) {
     let mut state = input.clone();
-    let mut expanded_key: [FheUint<FheUint8Id>; 176] =
-        std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
-
-    key_expansion_fhe(key, &mut expanded_key);
 
     add_blocks(&mut state, &expanded_key[160..176]);
 
@@ -178,6 +178,11 @@ fn main() {
     let key_fhe: [FheUint<FheUint8Id>; 16] =
         std::array::from_fn(|index| FheUint8::encrypt_trivial(key[index]));
 
+    let mut expanded_key: [FheUint<FheUint8Id>; 176] =
+        std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+
+    key_expansion_fhe(&key_fhe, &mut expanded_key);
+
     let mut output_encryption: [FheUint<FheUint8Id>; 16] =
         std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
 
@@ -191,11 +196,11 @@ fn main() {
             .collect();
 
         if i == 0 {
-            aes_encrypt_block(&input, &mut output_encryption, &key_fhe);
+            aes_encrypt_block(&input, &mut output_encryption, &expanded_key);
             continue;
         }
 
-        aes_encrypt_block(&input, &mut _output_encryption, &key_fhe);
+        aes_encrypt_block(&input, &mut _output_encryption, &expanded_key);
     }
 
     let encryption_duration = encryption_start.elapsed().as_secs();
@@ -254,6 +259,11 @@ mod tests {
         let key_fhe: [FheUint<FheUint8Id>; 16] =
             std::array::from_fn(|index| FheUint8::encrypt_trivial(key[index]));
 
+        let mut expanded_key: [FheUint<FheUint8Id>; 176] =
+            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+
+        key_expansion_fhe(&key_fhe, &mut expanded_key);
+
         let mut output_encryption: [FheUint<FheUint8Id>; 16] =
             std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
 
@@ -267,11 +277,11 @@ mod tests {
                 .collect();
 
             if i == 0 {
-                aes_encrypt_block(&input, &mut output_encryption, &key_fhe);
+                aes_encrypt_block(&input, &mut output_encryption, &expanded_key);
                 continue;
             }
 
-            aes_encrypt_block(&input, &mut _output_encryption, &key_fhe);
+            aes_encrypt_block(&input, &mut _output_encryption, &expanded_key);
         }
 
         let encryption_duration = encryption_start.elapsed().as_secs();
@@ -316,6 +326,11 @@ mod tests {
         let key_fhe: [FheUint<FheUint8Id>; 16] =
             std::array::from_fn(|index| FheUint8::encrypt_trivial(key[index]));
 
+        let mut expanded_key: [FheUint<FheUint8Id>; 176] =
+            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+
+        key_expansion_fhe(&key_fhe, &mut expanded_key);
+
         let mut output_decryption: [FheUint<FheUint8Id>; 16] =
             std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
 
@@ -329,11 +344,11 @@ mod tests {
                 .collect();
 
             if i == 0 {
-                aes_decrypt_block(&input, &mut output_decryption, &key_fhe);
+                aes_decrypt_block(&input, &mut output_decryption, &expanded_key);
                 continue;
             }
 
-            aes_decrypt_block(&input, &mut _output_decryption, &key_fhe);
+            aes_decrypt_block(&input, &mut _output_decryption, &expanded_key);
         }
 
         let decryption_duration = decryption_start.elapsed().as_secs();
