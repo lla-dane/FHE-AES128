@@ -1,3 +1,11 @@
+/// This module implements AES key expansion using Fully Homomorphic Encryption (FHE).
+/// It defines the necessary constants, such as round constants (RCON), and utilizes encrypted bytes
+/// (FheUint8) to perform the AES key expansion securely. The key expansion process applies operations
+/// like cyclic shifting, S-Box substitution, and XOR with round constants while keeping all computations
+/// encrypted, ensuring the privacy of the key throughout the process. The code also leverages parallelism
+/// using the Rayon library to speed up S-Box substitutions.
+///
+/// The `key_expansion_fhe` function performs the AES key expansion and encrypts the expanded key for secure use in AES encryption.
 use crate::{get_match_values, SBOX};
 use rayon::prelude::*;
 use std::time::Instant;

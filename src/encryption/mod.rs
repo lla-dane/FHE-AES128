@@ -1,3 +1,10 @@
+/// This module implements key transformations in the AES encryption process using Fully Homomorphic Encryption (FHE).
+/// It includes functions for performing the following operations:
+/// - `add_blocks`: Element-wise XOR operation for the AddRoundKey step.
+/// - `sub_bytes`: Substitution of bytes using the AES S-Box for the SubBytes transformation.
+/// - `shift_rows`: Shifting rows of the AES state matrix for the ShiftRows transformation.
+/// - `mix_columns`: Mixing columns of the AES state matrix using Galois Field multiplication for the MixColumns transformation.
+/// Each transformation is implemented with parallelism for performance optimization, utilizing the Rayon library and FHE techniques.
 use crate::SBOX;
 use rayon::prelude::*;
 use std::thread;

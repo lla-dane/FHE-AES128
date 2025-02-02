@@ -1,3 +1,47 @@
+/*!
+ * # Fully Homomorphic Encryption (FHE) Based AES-128 Implementation
+ *
+ * ## Overview
+ * This Rust program implements AES-128 encryption and decryption using
+ * Fully Homomorphic Encryption (FHE). It enables secure computations on encrypted
+ * data without the need for decryption, preserving privacy in sensitive operations.
+ *
+ * ## Features
+ * - AES-128 encryption and decryption using FHE
+ * - Key expansion using FHE operations
+ * - Performance measurement for encryption and decryption
+ * - Command-line interface for specifying encryption key, IV, and output count
+ *
+ * ## Dependencies
+ * - `tfhe` for Fully Homomorphic Encryption operations
+ * - `aes` for standard AES encryption (used for verification)
+ * - `clap` for command-line argument parsing
+ * - `rayon` for parallel computation distribution
+ * - `rand` for random number generation in tests
+ *
+ * ## Usage
+ * The program encrypts a specified number of blocks using AES-128 in an FHE environment
+ * and then decrypts them to verify correctness. The execution time for both encryption
+ * and decryption is measured.
+ *
+ * Example command:
+ * ```
+ * cargo run --release -- -n 3 -k 000102030405060708090a0b0c0d0e0f -i 00112233445566778899aabbccddeeff
+ * ```
+ * This encrypts and decrypts one block using the specified key and IV.
+ *
+ * ## Testing
+ * The implementation includes unit tests for:
+ * - AES encryption correctness
+ * - AES decryption correctness
+ * - AES key expansion process
+ *
+ * To run the tests:
+ * ```
+ * cargo test --release --package fhe-aes128 --bin fhe-aes128
+ * ```
+ */
+
 #![allow(unused)]
 mod decryption;
 mod encryption;
@@ -120,19 +164,26 @@ struct Args {
     #[arg(short, long)]
     key: String,
 }
-
 // cargo run --release -- -n 1 -k 000102030405060708090a0b0c0d0e0f -i 00112233445566778899aabbccddeeff
 
+/// This program performs Fully Homomorphic Encryption (FHE) based AES encryption and decryption.
+/// It takes an initialization vector (IV) and a key as input, encrypts a specified number of
+/// outputs using AES-128 in an FHE setting, and then decrypts them to verify correctness.
+/// The program also measures and prints the time taken for encryption and decryption.
 fn main() {
     let args = Args::parse();
 
+    // Convert the iv and key to an array of u8
     let iv = hex_to_u8_array(&args.iv).unwrap();
     let key = hex_to_u8_array(&args.key).unwrap();
 
+    // Create the AES128 encryptred ciphertext using standard AES128 crate
+    // for final verification
     let mut expected_state = iv.clone();
     let aes_cipher = Aes128::new((&key).into());
     aes_cipher.encrypt_block((&mut expected_state).into());
 
+    // Increment the counter for required number of outputs
     let mut counters_encryption: Vec<[u8; 16]> = vec![iv];
 
     for _ in 0..(args.number_of_outputs - 1) {
@@ -149,27 +200,28 @@ fn main() {
 
     // Generating the FHE-AES key from the hex string input
     let key_fhe: [FheUint<FheUint8Id>; 16] =
-        std::array::from_fn(|index| FheUint8::encrypt_trivial(key[index]));
+        std::array::from_fn(|index| FheUint8::encrypt(key[index], &cks));
 
     let mut expanded_key: [FheUint<FheUint8Id>; 176] =
-        std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+        std::array::from_fn(|_| FheUint8::encrypt(0u8, &cks));
 
     // ----------FHE-AES-KEY-EXPANSION-------------
     key_expansion_fhe(&key_fhe, &mut expanded_key);
 
     let mut output_encryption: Vec<[FheUint8; 16]> =
-        vec![std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8))];
+        vec![std::array::from_fn(|_| FheUint8::encrypt(0u8, &cks))];
 
+    // Measure the time of encryption
     let encryption_start = Instant::now();
 
     // ------FHE-AES-ENCRYPTION for specified number_of_outputs-------
     for i in 0..(args.number_of_outputs) as usize {
         let mut _output_encryption: [FheUint<FheUint8Id>; 16] =
-            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+            std::array::from_fn(|_| FheUint8::encrypt(0u8, &cks));
 
         let input: Vec<FheUint8> = counters_encryption[i]
             .iter()
-            .map(|x| FheUint8::encrypt_trivial(*x))
+            .map(|x| FheUint8::encrypt(*x, &cks))
             .collect();
 
         if i == 0 {
@@ -189,15 +241,16 @@ fn main() {
         encryption_duration
     );
 
+    // Measure the time for decryption
     let decryption_start = Instant::now();
 
     // -------FHE-AES-DECRYPTION for specified number_of_outputs-------
     let mut output_decryption: Vec<[FheUint8; 16]> =
-        vec![std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8))];
+        vec![std::array::from_fn(|_| FheUint8::encrypt(0u8, &cks))];
 
     for i in 0..(args.number_of_outputs) as usize {
         let mut _output_decryption: [FheUint8; 16] =
-            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+            std::array::from_fn(|_| FheUint8::encrypt(0u8, &cks));
 
         if i == 0 {
             aes_decrypt_block(
@@ -272,7 +325,6 @@ mod tests {
     }
 
     #[test]
-    // cargo test --release --package fhe-aes128 --bin fhe-aes128 -- tests::aes_encryption --exact --show-output
     fn aes_encryption() {
         let encryption_start = Instant::now();
 
@@ -298,23 +350,23 @@ mod tests {
         set_server_key(sks);
 
         let key_fhe: [FheUint<FheUint8Id>; 16] =
-            std::array::from_fn(|index| FheUint8::encrypt_trivial(key[index]));
+            std::array::from_fn(|index| FheUint8::encrypt(key[index], &cks));
 
         let mut expanded_key: [FheUint<FheUint8Id>; 176] =
-            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+            std::array::from_fn(|_| FheUint8::encrypt(0u8, &cks));
 
         key_expansion_fhe(&key_fhe, &mut expanded_key);
 
         let mut output_encryption: [FheUint<FheUint8Id>; 16] =
-            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+            std::array::from_fn(|_| FheUint8::encrypt(0u8, &cks));
 
         for i in 0..number_of_outputs {
             let mut _output_encryption: [FheUint<FheUint8Id>; 16] =
-                std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+                std::array::from_fn(|_| FheUint8::encrypt(0u8, &cks));
 
             let input: Vec<FheUint8> = counters_encryption[i]
                 .iter()
-                .map(|x| FheUint8::encrypt_trivial(*x))
+                .map(|x| FheUint8::encrypt(*x, &cks))
                 .collect();
 
             if i == 0 {
@@ -339,7 +391,6 @@ mod tests {
     }
 
     #[test]
-    // cargo test --release --package fhe-aes128 --bin fhe-aes128 -- tests::aes_decryption --exact --show-output
     fn aes_decryption() {
         let decryption_start = Instant::now();
 
@@ -365,23 +416,23 @@ mod tests {
         set_server_key(sks);
 
         let key_fhe: [FheUint<FheUint8Id>; 16] =
-            std::array::from_fn(|index| FheUint8::encrypt_trivial(key[index]));
+            std::array::from_fn(|index| FheUint8::encrypt(key[index], &cks));
 
         let mut expanded_key: [FheUint<FheUint8Id>; 176] =
-            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+            std::array::from_fn(|_| FheUint8::encrypt(0u8, &cks));
 
         key_expansion_fhe(&key_fhe, &mut expanded_key);
 
         let mut output_decryption: [FheUint<FheUint8Id>; 16] =
-            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+            std::array::from_fn(|_| FheUint8::encrypt(0u8, &cks));
 
         for i in 0..number_of_outputs {
             let mut _output_decryption: [FheUint<FheUint8Id>; 16] =
-                std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+                std::array::from_fn(|_| FheUint8::encrypt(0u8, &cks));
 
             let input: Vec<FheUint8> = counters_decryption[i]
                 .iter()
-                .map(|x| FheUint8::encrypt_trivial(*x))
+                .map(|x| FheUint8::encrypt(*x, &cks))
                 .collect();
 
             if i == 0 {
@@ -406,7 +457,6 @@ mod tests {
     }
 
     #[test]
-    // cargo test --release --package fhe-aes128 --bin fhe-aes128 -- tests::aes_key_expansion --exact --show-output
     fn aes_key_expansion() {
         let config = ConfigBuilder::default().build();
         let (cks, sks) = generate_keys(config);
@@ -415,10 +465,10 @@ mod tests {
         set_server_key(sks);
 
         let key = hex_to_u8_array(&generate_random_hex_string()).unwrap();
-        let key_fhe = std::array::from_fn(|index| FheUint8::encrypt_trivial(key[index]));
+        let key_fhe = std::array::from_fn(|index| FheUint8::encrypt(key[index], &cks));
 
         let mut expanded_key: [FheUint<FheUint8Id>; 176] =
-            std::array::from_fn(|_| FheUint8::encrypt_trivial(0u8));
+            std::array::from_fn(|_| FheUint8::encrypt(0u8, &cks));
 
         key_expansion_fhe(&key_fhe, &mut expanded_key);
     }

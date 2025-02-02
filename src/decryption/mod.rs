@@ -1,3 +1,10 @@
+/// This module implements the inverse transformations used in AES decryption with Fully Homomorphic Encryption (FHE).
+/// It includes functions to reverse the operations applied during encryption:
+/// - `inv_sub_bytes`: Inverse byte substitution using the inverse AES S-Box.
+/// - `inv_shift_rows`: Reverses the row shifting of the AES state matrix.
+/// - `inv_mix_columns`: Reverses the column mixing using Galois Field multiplication.
+///
+/// Each operation is parallelized for efficiency using the Rayon library and utilizes FHE to ensure the privacy of the data during decryption.
 use crate::encryption::gal_mul_int;
 use crate::utils::INV_SBOX;
 use rayon::prelude::*;
