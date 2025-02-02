@@ -1,4 +1,4 @@
-# Homomorphic AES-128 Implementation with TFHE-rs
+# Homomorphic AES-128 Implementation
 
 ## Overview
 
@@ -11,6 +11,7 @@ The implementation is split into two main components:
 2. Encryption/Decryption
 
 ## System design
+![fhe_aes128_sys](https://github.com/user-attachments/assets/89e5b94c-4f7d-49db-877b-fe64033d76a7)
 
 ## System Requirements
 
