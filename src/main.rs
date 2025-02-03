@@ -211,8 +211,8 @@ fn main() {
     let mut output_encryption: Vec<[FheUint8; 16]> =
         vec![std::array::from_fn(|_| FheUint8::encrypt(0u8, &cks))];
 
-    // Measure the time of encryption
-    let encryption_start = Instant::now();
+    // Measure the time of computation
+    let computation_time = Instant::now();
 
     // ------FHE-AES-ENCRYPTION for specified number_of_outputs-------
     for i in 0..(args.number_of_outputs) as usize {
@@ -232,17 +232,6 @@ fn main() {
         aes_encrypt_block(&input, &mut _output_encryption, &expanded_key);
         output_encryption.push(_output_encryption);
     }
-
-    let encryption_duration = encryption_start.elapsed().as_secs();
-
-    println!(
-        "AES encryption of {} outputs took {} seconds",
-        output_encryption.len(),
-        encryption_duration
-    );
-
-    // Measure the time for decryption
-    let decryption_start = Instant::now();
 
     // -------FHE-AES-DECRYPTION for specified number_of_outputs-------
     let mut output_decryption: Vec<[FheUint8; 16]> =
@@ -270,8 +259,9 @@ fn main() {
         output_decryption.push(_output_decryption);
     }
 
-    let decryption_duration = decryption_start.elapsed().as_secs();
+    let computation_duration = computation_time.elapsed().as_secs();
 
+    // Cross checking the AES outputs
     for i in 0..16 {
         let result: u8 = output_encryption[0][i].decrypt(&cks);
         assert_eq!(result, expected_state[i]);
@@ -283,9 +273,9 @@ fn main() {
     }
 
     println!(
-        "AES decryption of {} outputs took {} seconds",
+        "AES of {} outputs took {} seconds",
         output_decryption.len(),
-        decryption_duration
+        computation_duration
     );
 }
 
