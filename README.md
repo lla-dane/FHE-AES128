@@ -11,7 +11,8 @@ The implementation is split into two main components:
 2. Encryption/Decryption
 
 ## System design
-![fhe_aes128_sys](https://github.com/user-attachments/assets/89e5b94c-4f7d-49db-877b-fe64033d76a7)
+
+![fhe_aes128_sys](https://github.com/user-attachments/assets/be4a16ad-1320-41d1-b7ac-3685ff6b5f5c)
 
 ## System Requirements
 
