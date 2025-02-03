@@ -38,7 +38,7 @@
  *
  * To run the tests:
  * ```
- * cargo test --release --package fhe-aes128 --bin fhe-aes128
+ * cargo test --release 
  * ```
  */
 
