@@ -18,6 +18,21 @@ The implementation is split into two main components:
 
 Rust (nightly version specified in toolchain.txt)
 
+The provided executable is specifically built for x86-64 GNU/Linux systems with the following specifications:
+
+```
+ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked,
+interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0,
+BuildID[sha1]=b750ce9b0857a830c06429a55f6ce72a59b5647f, not stripped
+```
+
+To compile an executable as per your system specifications, run the following commands:
+
+```bash
+cargo build --release
+./target/release/fhe-aes128 [OPTIONS]
+```
+
 ## Installation
 
 Clone the repository and navigate to the project directory:
