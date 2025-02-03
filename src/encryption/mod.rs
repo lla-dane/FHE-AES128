@@ -119,7 +119,7 @@ pub fn shift_rows(state: &mut Vec<FheUint8>) {
 ///
 /// # Returns
 /// * `FheUint8` - The result of the multiplication in GF(2^8).
-pub fn gal_mul_int(a: FheUint8, b: u8) -> FheUint8 {
+pub fn gal_mul(a: FheUint8, b: u8) -> FheUint8 {
     // Initialize the result as 0 in GF(2^8)
     let mut result: FheUint8 = FheUint8::encrypt_trivial(0u8);
 
@@ -171,7 +171,7 @@ pub fn gal_mul_int(a: FheUint8, b: u8) -> FheUint8 {
 /// |  1  1  2  3 |
 /// |  3  1  1  2 |
 /// ```
-/// - Multiplications in [GF(2^8)] are performed using [`gal_mul_int()`].
+/// - Multiplications in [GF(2^8)] are performed using [`gal_mul()`].
 /// - Processing is parallelized for efficiency.
 pub fn mix_columns(state: &mut Vec<FheUint8>) {
     // Create a copy of the state to prevent overwriting values prematurely
@@ -182,106 +182,106 @@ pub fn mix_columns(state: &mut Vec<FheUint8>) {
         *elem = match i {
             // First column transformation
             0 => {
-                gal_mul_int(temp[0].clone(), 2u8)
-                    ^ gal_mul_int(temp[1].clone(), 3u8)
+                gal_mul(temp[0].clone(), 2u8)
+                    ^ gal_mul(temp[1].clone(), 3u8)
                     ^ temp[2].clone()
                     ^ temp[3].clone()
             }
             1 => {
                 temp[0].clone()
-                    ^ gal_mul_int(temp[1].clone(), 2u8)
-                    ^ gal_mul_int(temp[2].clone(), 3u8)
+                    ^ gal_mul(temp[1].clone(), 2u8)
+                    ^ gal_mul(temp[2].clone(), 3u8)
                     ^ temp[3].clone()
             }
             2 => {
                 temp[0].clone()
                     ^ temp[1].clone()
-                    ^ gal_mul_int(temp[2].clone(), 2u8)
-                    ^ gal_mul_int(temp[3].clone(), 3u8)
+                    ^ gal_mul(temp[2].clone(), 2u8)
+                    ^ gal_mul(temp[3].clone(), 3u8)
             }
             3 => {
-                gal_mul_int(temp[0].clone(), 3u8)
+                gal_mul(temp[0].clone(), 3u8)
                     ^ temp[1].clone()
                     ^ temp[2].clone()
-                    ^ gal_mul_int(temp[3].clone(), 2u8)
+                    ^ gal_mul(temp[3].clone(), 2u8)
             }
 
             // Second column transformation
             4 => {
-                gal_mul_int(temp[4].clone(), 2u8)
-                    ^ gal_mul_int(temp[5].clone(), 3u8)
+                gal_mul(temp[4].clone(), 2u8)
+                    ^ gal_mul(temp[5].clone(), 3u8)
                     ^ temp[6].clone()
                     ^ temp[7].clone()
             }
             5 => {
                 temp[4].clone()
-                    ^ gal_mul_int(temp[5].clone(), 2u8)
-                    ^ gal_mul_int(temp[6].clone(), 3u8)
+                    ^ gal_mul(temp[5].clone(), 2u8)
+                    ^ gal_mul(temp[6].clone(), 3u8)
                     ^ temp[7].clone()
             }
             6 => {
                 temp[4].clone()
                     ^ temp[5].clone()
-                    ^ gal_mul_int(temp[6].clone(), 2u8)
-                    ^ gal_mul_int(temp[7].clone(), 3u8)
+                    ^ gal_mul(temp[6].clone(), 2u8)
+                    ^ gal_mul(temp[7].clone(), 3u8)
             }
             7 => {
-                gal_mul_int(temp[4].clone(), 3u8)
+                gal_mul(temp[4].clone(), 3u8)
                     ^ temp[5].clone()
                     ^ temp[6].clone()
-                    ^ gal_mul_int(temp[7].clone(), 2u8)
+                    ^ gal_mul(temp[7].clone(), 2u8)
             }
 
             // Third column transformation
             8 => {
-                gal_mul_int(temp[8].clone(), 2u8)
-                    ^ gal_mul_int(temp[9].clone(), 3u8)
+                gal_mul(temp[8].clone(), 2u8)
+                    ^ gal_mul(temp[9].clone(), 3u8)
                     ^ temp[10].clone()
                     ^ temp[11].clone()
             }
             9 => {
                 temp[8].clone()
-                    ^ gal_mul_int(temp[9].clone(), 2u8)
-                    ^ gal_mul_int(temp[10].clone(), 3u8)
+                    ^ gal_mul(temp[9].clone(), 2u8)
+                    ^ gal_mul(temp[10].clone(), 3u8)
                     ^ temp[11].clone()
             }
             10 => {
                 temp[8].clone()
                     ^ temp[9].clone()
-                    ^ gal_mul_int(temp[10].clone(), 2u8)
-                    ^ gal_mul_int(temp[11].clone(), 3u8)
+                    ^ gal_mul(temp[10].clone(), 2u8)
+                    ^ gal_mul(temp[11].clone(), 3u8)
             }
             11 => {
-                gal_mul_int(temp[8].clone(), 3u8)
+                gal_mul(temp[8].clone(), 3u8)
                     ^ temp[9].clone()
                     ^ temp[10].clone()
-                    ^ gal_mul_int(temp[11].clone(), 2u8)
+                    ^ gal_mul(temp[11].clone(), 2u8)
             }
 
             // Fourth column transformation
             12 => {
-                gal_mul_int(temp[12].clone(), 2u8)
-                    ^ gal_mul_int(temp[13].clone(), 3u8)
+                gal_mul(temp[12].clone(), 2u8)
+                    ^ gal_mul(temp[13].clone(), 3u8)
                     ^ temp[14].clone()
                     ^ temp[15].clone()
             }
             13 => {
                 temp[12].clone()
-                    ^ gal_mul_int(temp[13].clone(), 2u8)
-                    ^ gal_mul_int(temp[14].clone(), 3u8)
+                    ^ gal_mul(temp[13].clone(), 2u8)
+                    ^ gal_mul(temp[14].clone(), 3u8)
                     ^ temp[15].clone()
             }
             14 => {
                 temp[12].clone()
                     ^ temp[13].clone()
-                    ^ gal_mul_int(temp[14].clone(), 2u8)
-                    ^ gal_mul_int(temp[15].clone(), 3u8)
+                    ^ gal_mul(temp[14].clone(), 2u8)
+                    ^ gal_mul(temp[15].clone(), 3u8)
             }
             15 => {
-                gal_mul_int(temp[12].clone(), 3u8)
+                gal_mul(temp[12].clone(), 3u8)
                     ^ temp[13].clone()
                     ^ temp[14].clone()
-                    ^ gal_mul_int(temp[15].clone(), 2u8)
+                    ^ gal_mul(temp[15].clone(), 2u8)
             }
 
             _ => unreachable!(), // Ensure we never access an out-of-bounds index

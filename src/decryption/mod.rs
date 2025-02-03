@@ -5,7 +5,7 @@
 /// - `inv_mix_columns`: Reverses the column mixing using Galois Field multiplication.
 ///
 /// Each operation is parallelized for efficiency using the Rayon library and utilizes FHE to ensure the privacy of the data during decryption.
-use crate::encryption::gal_mul_int;
+use crate::encryption::gal_mul;
 use crate::utils::INV_SBOX;
 use rayon::prelude::*;
 use std::thread;
@@ -110,7 +110,7 @@ pub fn inv_shift_rows(state: &mut Vec<FheUint8>) {
 ///
 /// # Assumptions
 /// - The input vector `state` must contain exactly 16 elements.
-/// - `gal_mul_int` performs multiplication in GF(2^8).
+/// - `gal_mul` performs multiplication in GF(2^8).
 ///
 /// # Panics
 /// - The function will panic if `state` does not have exactly 16 elements.
@@ -122,100 +122,100 @@ pub fn inv_mix_columns(state: &mut Vec<FheUint8>) {
     state.par_iter_mut().enumerate().for_each(|(i, elem)| {
         *elem = match i {
             0 => {
-                gal_mul_int(temp[0].clone(), 0x0e)
-                    ^ gal_mul_int(temp[1].clone(), 0x0b)
-                    ^ gal_mul_int(temp[2].clone(), 0x0d)
-                    ^ gal_mul_int(temp[3].clone(), 0x09)
+                gal_mul(temp[0].clone(), 0x0e)
+                    ^ gal_mul(temp[1].clone(), 0x0b)
+                    ^ gal_mul(temp[2].clone(), 0x0d)
+                    ^ gal_mul(temp[3].clone(), 0x09)
             }
             1 => {
-                gal_mul_int(temp[0].clone(), 0x09)
-                    ^ gal_mul_int(temp[1].clone(), 0x0e)
-                    ^ gal_mul_int(temp[2].clone(), 0x0b)
-                    ^ gal_mul_int(temp[3].clone(), 0x0d)
+                gal_mul(temp[0].clone(), 0x09)
+                    ^ gal_mul(temp[1].clone(), 0x0e)
+                    ^ gal_mul(temp[2].clone(), 0x0b)
+                    ^ gal_mul(temp[3].clone(), 0x0d)
             }
             2 => {
-                gal_mul_int(temp[0].clone(), 0x0d)
-                    ^ gal_mul_int(temp[1].clone(), 0x09)
-                    ^ gal_mul_int(temp[2].clone(), 0x0e)
-                    ^ gal_mul_int(temp[3].clone(), 0x0b)
+                gal_mul(temp[0].clone(), 0x0d)
+                    ^ gal_mul(temp[1].clone(), 0x09)
+                    ^ gal_mul(temp[2].clone(), 0x0e)
+                    ^ gal_mul(temp[3].clone(), 0x0b)
             }
             3 => {
-                gal_mul_int(temp[0].clone(), 0x0b)
-                    ^ gal_mul_int(temp[1].clone(), 0x0d)
-                    ^ gal_mul_int(temp[2].clone(), 0x09)
-                    ^ gal_mul_int(temp[3].clone(), 0x0e)
+                gal_mul(temp[0].clone(), 0x0b)
+                    ^ gal_mul(temp[1].clone(), 0x0d)
+                    ^ gal_mul(temp[2].clone(), 0x09)
+                    ^ gal_mul(temp[3].clone(), 0x0e)
             }
             4 => {
-                gal_mul_int(temp[4].clone(), 0x0e)
-                    ^ gal_mul_int(temp[5].clone(), 0x0b)
-                    ^ gal_mul_int(temp[6].clone(), 0x0d)
-                    ^ gal_mul_int(temp[7].clone(), 0x09)
+                gal_mul(temp[4].clone(), 0x0e)
+                    ^ gal_mul(temp[5].clone(), 0x0b)
+                    ^ gal_mul(temp[6].clone(), 0x0d)
+                    ^ gal_mul(temp[7].clone(), 0x09)
             }
             5 => {
-                gal_mul_int(temp[4].clone(), 0x09)
-                    ^ gal_mul_int(temp[5].clone(), 0x0e)
-                    ^ gal_mul_int(temp[6].clone(), 0x0b)
-                    ^ gal_mul_int(temp[7].clone(), 0x0d)
+                gal_mul(temp[4].clone(), 0x09)
+                    ^ gal_mul(temp[5].clone(), 0x0e)
+                    ^ gal_mul(temp[6].clone(), 0x0b)
+                    ^ gal_mul(temp[7].clone(), 0x0d)
             }
             6 => {
-                gal_mul_int(temp[4].clone(), 0x0d)
-                    ^ gal_mul_int(temp[5].clone(), 0x09)
-                    ^ gal_mul_int(temp[6].clone(), 0x0e)
-                    ^ gal_mul_int(temp[7].clone(), 0x0b)
+                gal_mul(temp[4].clone(), 0x0d)
+                    ^ gal_mul(temp[5].clone(), 0x09)
+                    ^ gal_mul(temp[6].clone(), 0x0e)
+                    ^ gal_mul(temp[7].clone(), 0x0b)
             }
             7 => {
-                gal_mul_int(temp[4].clone(), 0x0b)
-                    ^ gal_mul_int(temp[5].clone(), 0x0d)
-                    ^ gal_mul_int(temp[6].clone(), 0x09)
-                    ^ gal_mul_int(temp[7].clone(), 0x0e)
+                gal_mul(temp[4].clone(), 0x0b)
+                    ^ gal_mul(temp[5].clone(), 0x0d)
+                    ^ gal_mul(temp[6].clone(), 0x09)
+                    ^ gal_mul(temp[7].clone(), 0x0e)
             }
             8 => {
-                gal_mul_int(temp[8].clone(), 0x0e)
-                    ^ gal_mul_int(temp[9].clone(), 0x0b)
-                    ^ gal_mul_int(temp[10].clone(), 0x0d)
-                    ^ gal_mul_int(temp[11].clone(), 0x09)
+                gal_mul(temp[8].clone(), 0x0e)
+                    ^ gal_mul(temp[9].clone(), 0x0b)
+                    ^ gal_mul(temp[10].clone(), 0x0d)
+                    ^ gal_mul(temp[11].clone(), 0x09)
             }
             9 => {
-                gal_mul_int(temp[8].clone(), 0x09)
-                    ^ gal_mul_int(temp[9].clone(), 0x0e)
-                    ^ gal_mul_int(temp[10].clone(), 0x0b)
-                    ^ gal_mul_int(temp[11].clone(), 0x0d)
+                gal_mul(temp[8].clone(), 0x09)
+                    ^ gal_mul(temp[9].clone(), 0x0e)
+                    ^ gal_mul(temp[10].clone(), 0x0b)
+                    ^ gal_mul(temp[11].clone(), 0x0d)
             }
             10 => {
-                gal_mul_int(temp[8].clone(), 0x0d)
-                    ^ gal_mul_int(temp[9].clone(), 0x09)
-                    ^ gal_mul_int(temp[10].clone(), 0x0e)
-                    ^ gal_mul_int(temp[11].clone(), 0x0b)
+                gal_mul(temp[8].clone(), 0x0d)
+                    ^ gal_mul(temp[9].clone(), 0x09)
+                    ^ gal_mul(temp[10].clone(), 0x0e)
+                    ^ gal_mul(temp[11].clone(), 0x0b)
             }
             11 => {
-                gal_mul_int(temp[8].clone(), 0x0b)
-                    ^ gal_mul_int(temp[9].clone(), 0x0d)
-                    ^ gal_mul_int(temp[10].clone(), 0x09)
-                    ^ gal_mul_int(temp[11].clone(), 0x0e)
+                gal_mul(temp[8].clone(), 0x0b)
+                    ^ gal_mul(temp[9].clone(), 0x0d)
+                    ^ gal_mul(temp[10].clone(), 0x09)
+                    ^ gal_mul(temp[11].clone(), 0x0e)
             }
             12 => {
-                gal_mul_int(temp[12].clone(), 0x0e)
-                    ^ gal_mul_int(temp[13].clone(), 0x0b)
-                    ^ gal_mul_int(temp[14].clone(), 0x0d)
-                    ^ gal_mul_int(temp[15].clone(), 0x09)
+                gal_mul(temp[12].clone(), 0x0e)
+                    ^ gal_mul(temp[13].clone(), 0x0b)
+                    ^ gal_mul(temp[14].clone(), 0x0d)
+                    ^ gal_mul(temp[15].clone(), 0x09)
             }
             13 => {
-                gal_mul_int(temp[12].clone(), 0x09)
-                    ^ gal_mul_int(temp[13].clone(), 0x0e)
-                    ^ gal_mul_int(temp[14].clone(), 0x0b)
-                    ^ gal_mul_int(temp[15].clone(), 0x0d)
+                gal_mul(temp[12].clone(), 0x09)
+                    ^ gal_mul(temp[13].clone(), 0x0e)
+                    ^ gal_mul(temp[14].clone(), 0x0b)
+                    ^ gal_mul(temp[15].clone(), 0x0d)
             }
             14 => {
-                gal_mul_int(temp[12].clone(), 0x0d)
-                    ^ gal_mul_int(temp[13].clone(), 0x09)
-                    ^ gal_mul_int(temp[14].clone(), 0x0e)
-                    ^ gal_mul_int(temp[15].clone(), 0x0b)
+                gal_mul(temp[12].clone(), 0x0d)
+                    ^ gal_mul(temp[13].clone(), 0x09)
+                    ^ gal_mul(temp[14].clone(), 0x0e)
+                    ^ gal_mul(temp[15].clone(), 0x0b)
             }
             15 => {
-                gal_mul_int(temp[12].clone(), 0x0b)
-                    ^ gal_mul_int(temp[13].clone(), 0x0d)
-                    ^ gal_mul_int(temp[14].clone(), 0x09)
-                    ^ gal_mul_int(temp[15].clone(), 0x0e)
+                gal_mul(temp[12].clone(), 0x0b)
+                    ^ gal_mul(temp[13].clone(), 0x0d)
+                    ^ gal_mul(temp[14].clone(), 0x09)
+                    ^ gal_mul(temp[15].clone(), 0x0e)
             }
             _ => unreachable!(),
         };
