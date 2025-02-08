@@ -38,7 +38,7 @@
  *
  * To run the tests:
  * ```
- * cargo test --release 
+ * cargo test --release
  * ```
  */
 
@@ -233,6 +233,9 @@ fn main() {
         output_encryption.push(_output_encryption);
     }
 
+    // Only incrluding the time taken in encryption in the computation time data. 
+    let computation_duration = computation_time.elapsed().as_secs();
+
     // -------FHE-AES-DECRYPTION for specified number_of_outputs-------
     let mut output_decryption: Vec<[FheUint8; 16]> =
         vec![std::array::from_fn(|_| FheUint8::encrypt(0u8, &cks))];
@@ -258,8 +261,6 @@ fn main() {
 
         output_decryption.push(_output_decryption);
     }
-
-    let computation_duration = computation_time.elapsed().as_secs();
 
     // Cross checking the AES outputs
     for i in 0..16 {
